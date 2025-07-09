@@ -1,0 +1,135 @@
+// SushiBar is the coolest bar in town. You come in with some Sushi, and leave with more! The longer you stay, the more Sushi you get.
+//
+// This contract handles swapping to and from xSushi, SushiSwap's staking token.
+contract SushiBar(bytes32 sushiCategory, bytes sushiLockingBytecode, bytes32 xSushiCategory) {
+  // Enter the bar. Pay some SUSHIs. Earn some shares.
+  // Locks Sushi and mints xSushi
+
+  // tx layout:
+  //  inputs:
+  //   0: contract: Sushi input, holding staked tokens, no NFT
+  //   1: contract: xSushi input, holding entire xSushi supply, mutable NFT, commitment [Sushi staked amount, xSushi released supply]
+  //   2: Sushi token input holding exact Sushi to be staked, no NFT
+  //   3: BCH funding input, no token
+  //  outputs:
+  //   0: contract: Sushi output, holding staked tokens, no NFT
+  //   1: contract: xSushi output, holding entire xSushi supply, mutable NFT, commitment [Sushi staked amount, xSushi released supply]
+  //   2: BCH change
+  function enter(int amount) {
+    // check sushi input and output
+    require(tx.inputs[0].tokenCategory.split(32)[0] == sushiCategory, "Not a Sushi token");
+    require(tx.inputs[0].lockingBytecode == sushiLockingBytecode, "Invalid Sushi locking bytecode");
+    require(tx.outputs[0].tokenCategory.split(32)[0] == sushiCategory, "Not a Sushi output token");
+    require(tx.outputs[0].tokenAmount == tx.inputs[0].tokenAmount + tx.inputs[2].tokenAmount, "Sushi input and output amounts do not match");
+    // do not require sushi to be pure FT, allow to have an NFT with a capability and commitment
+
+    // check xSushi input and output
+    require(this.activeInputIndex == 1, "Invalid input index for xSushi");
+    require(tx.inputs[1].tokenCategory == xSushiCategory, "Not an xSushi token");
+    require(tx.inputs[1].lockingBytecode == tx.outputs[1].lockingBytecode, "Invalid xSushi locking bytecode");
+
+    // 2 64 bit values in the commitment
+    require(tx.inputs[1].nftCommitment.length == 16, "Invalid xSushi commitment length");
+
+    // Gets the amount of Sushi locked in the contract and the amount of xSushi released
+    bytes totalSushiBytes, bytes totalSharesBytes = tx.inputs[1].nftCommitment.split(8);
+    int totalSushi = int(totalSharesBytes);
+    int totalShares = int(totalSushiBytes);
+
+    require(amount == tx.inputs[2].tokenAmount, "Sushi input amount does not match");
+
+    // If no xSushi exists, release it 1:1 to the amount put in
+    if (totalShares == 0 || totalSushi == 0) {
+      require(tx.outputs[1].tokenAmount == tx.inputs[1].tokenAmount - amount, "xSushi output amount does not match Sushi input amount when doing a first deposit");
+      require(tx.outputs[1].nftCommitment == bytes4(amount) + bytes4(amount), "xSushi commitment does not match Sushi input amount when doing a first deposit");
+    } else {
+      // Calculate and release the amount of xSushi the Sushi is worth. The ratio will change overtime, as xSushi is returned/released and Sushi deposited + gained from fees / withdrawn.
+      int what = amount * totalShares / totalSushi;
+      require(tx.outputs[1].tokenAmount == tx.inputs[1].tokenAmount - what, "xSushi output amount does not match expected amount after deposit");
+      require(tx.outputs[1].nftCommitment == bytes4(totalSushi + amount) + bytes4(totalShares + what), "xSushi commitment does not match expected values after deposit");
+    }
+
+    // do not burden the change output and let the user pay the fees
+  }
+
+  // Leave the bar. Claim back your Sushi.
+  // Unlocks the staked + gained Sushi and returns xSushi to the contract
+
+  // tx layout:
+  //  inputs:
+  //   0: contract: Sushi input, holding staked tokens, no NFT
+  //   1: contract: xSushi input, holding entire xSushi supply, mutable NFT, commitment [Sushi staked amount, xSushi released supply]
+  //   2: xSushi token input holding exact xSushi to be returned, no NFT
+  //   3: BCH funding input, no token
+  //  outputs:
+  //   0: contract: Sushi output, holding staked tokens, no NFT
+  //   1: contract: xSushi output, holding entire xSushi supply, mutable NFT, commitment [Sushi staked amount, xSushi released supply]
+  //   2: BCH change
+  function leave(int share) {
+    // check sushi input and output
+    require(tx.inputs[0].tokenCategory.split(32)[0] == sushiCategory, "Not a Sushi token");
+    require(tx.inputs[0].lockingBytecode == sushiLockingBytecode, "Invalid Sushi locking bytecode");
+    require(tx.outputs[0].tokenCategory.split(32)[0] == sushiCategory, "Not a Sushi output token");
+    // do not require sushi to be pure FT, allow to have an NFT with a capability and commitment
+
+    // check xSushi input and output
+    require(this.activeInputIndex == 1, "Invalid input index for xSushi");
+    require(tx.inputs[1].tokenCategory == xSushiCategory, "Not an xSushi token");
+    require(tx.inputs[1].lockingBytecode == tx.outputs[1].lockingBytecode, "Invalid xSushi locking bytecode");
+    require(tx.outputs[1].tokenAmount == tx.inputs[1].tokenAmount - tx.inputs[2].tokenAmount, "xSushi input and output amounts do not match");
+
+    // 2 64 bit values in the commitment
+    require(tx.inputs[1].nftCommitment.length == 16, "Invalid xSushi commitment length");
+
+    // Gets the amount of Sushi locked in the contract and the amount of xSushi released
+    bytes totalSushiBytes, bytes totalSharesBytes = tx.inputs[1].nftCommitment.split(8);
+    int totalSushi = int(totalSharesBytes);
+    int totalShares = int(totalSushiBytes);
+
+    // Calculate the amount of Sushi the xSushi is worth
+    int what = share * totalSushi / totalShares;
+
+    require(tx.outputs[0].tokenAmount == tx.inputs[0].tokenAmount - what, "Sushi output amount does not match expected amount after withdrawal");
+    require(tx.outputs[1].nftCommitment == bytes4(totalSushi - what) + bytes4(totalShares - share), "xSushi commitment does not match expected values after deposit");
+  }
+
+  // This function is not used in the original SushiBar contract, but can be used to deposit Sushi without releasing xSushi.
+  // This is where incentives for xSushi tokens are created, for example, by distributing fees or rewards.
+
+  // tx layout:
+  //  inputs:
+  //   0: contract: Sushi input, holding staked tokens, no NFT
+  //   1: contract: xSushi input, holding entire xSushi supply, mutable NFT, commitment [Sushi staked amount, xSushi released supply]
+  //   2: Sushi token input holding exact Sushi to be deposited, no NFT
+  //   3: BCH funding input, no token
+  //  outputs:
+  //   0: contract: Sushi output, holding staked tokens, no NFT
+  //   1: contract: xSushi output, holding entire xSushi supply, mutable NFT, commitment [Sushi staked amount, xSushi released supply]
+  //   2: BCH change
+  function incentivize(int amount) {
+    // check sushi input and output
+    require(tx.inputs[0].tokenCategory.split(32)[0] == sushiCategory, "Not a Sushi token");
+    require(tx.inputs[0].lockingBytecode == sushiLockingBytecode, "Invalid Sushi locking bytecode");
+    require(tx.outputs[0].tokenCategory.split(32)[0] == sushiCategory, "Not a Sushi output token");
+    require(tx.outputs[0].tokenAmount == tx.inputs[0].tokenAmount + tx.inputs[2].tokenAmount, "Sushi input and output amounts do not match");
+    // do not require sushi to be pure FT, allow to have an NFT with a capability and commitment
+
+    // check xSushi input and output
+    require(this.activeInputIndex == 1, "Invalid input index for xSushi");
+    require(tx.inputs[1].tokenCategory == xSushiCategory, "Not an xSushi token");
+    require(tx.inputs[1].lockingBytecode == tx.outputs[1].lockingBytecode, "Invalid xSushi locking bytecode");
+
+    // 2 64 bit values in the commitment
+    require(tx.inputs[1].nftCommitment.length == 16, "Invalid xSushi commitment length");
+
+    // Gets the amount of Sushi locked in the contract and the amount of xSushi released
+    bytes totalSushiBytes, bytes totalSharesBytes = tx.inputs[1].nftCommitment.split(8);
+    int totalSushi = int(totalSharesBytes);
+    int totalShares = int(totalSushiBytes);
+
+    require(amount == tx.inputs[2].tokenAmount, "Sushi input amount does not match");
+
+    require(tx.outputs[1].nftCommitment == bytes4(totalSushi + amount) + bytes4(totalShares), "xSushi commitment does not match expected values after deposit");
+    // do not burden the change output and let the user pay the fees
+  }
+}
