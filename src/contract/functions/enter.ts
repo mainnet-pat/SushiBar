@@ -1,16 +1,16 @@
 import { NetworkProvider, SignatureTemplate, TransactionBuilder, Utxo } from "cashscript";
-import { getContracts, padVmNumber, vmToBigInt, toCashScriptUtxo } from "../utils";
+import { getContracts, padVmNumber, vmToBigInt, toCashScriptUtxo } from "../../utils";
 import { binToHex, TestNetWallet, TokenSendRequest } from "mainnet-js";
 
-export const leave = async ({
-  amountXSushi,
+export const enter = async ({
+  amountSushi,
   wallet,
   provider,
   sushiCategory,
   xSushiCategory,
   sushiBarCategory,
 } : {
-  amountXSushi: bigint,
+  amountSushi: bigint,
   wallet: TestNetWallet,
   provider: NetworkProvider,
   sushiCategory: string,
@@ -27,10 +27,10 @@ export const leave = async ({
   const totalSushi = vmToBigInt(sushiBarContractUtxo.token.nft.commitment.slice(0, 16));
   const totalShares = vmToBigInt(sushiBarContractUtxo.token.nft.commitment.slice(16, 32));
 
-  const what = amountXSushi * totalSushi / totalShares;
+  const what = totalShares > 0n ? amountSushi * totalShares / totalSushi : amountSushi;
 
-  const newTotalSushi = totalSushi - what;
-  const newTotalShares = totalShares - amountXSushi;
+  const newTotalSushi = totalSushi + amountSushi;
+  const newTotalShares = totalShares + what;
 
   const newCommitment = binToHex(Uint8Array.from([
     ...padVmNumber(newTotalSushi, 8),
@@ -42,40 +42,36 @@ export const leave = async ({
     throw new Error("No suitable UTXO found for Sushi contract");
   }
 
-  if (sushiContractUtxo.token.amount - what <= 0n) {
-    throw new Error(`Not enough Sushi available in SushiBar to leave: ${what} required, ${sushiContractUtxo.token.amount} available`);
-  }
-
   const xSushiContractUtxo = (await contracts.xSushi.getUtxos())[0];
   if (!xSushiContractUtxo || !xSushiContractUtxo.token?.amount) {
     throw new Error("No suitable UTXO found for xSushi contract");
   }
 
-  const xSushiDepositUtxoCandidates = await wallet.getUtxos();
-  const xSushiDepositUtxos = xSushiDepositUtxoCandidates
-    .filter(utxo => utxo.token?.tokenId === xSushiCategory && utxo.token.amount >= 0n);
-  const xSushiAvailable = xSushiDepositUtxos
+  const sushiDepositUtxoCandidates = await wallet.getUtxos();
+  const sushiDepositUtxos = sushiDepositUtxoCandidates
+    .filter(utxo => utxo.token?.tokenId === sushiCategory && utxo.token.amount >= 0n);
+  const sushiAvailable = sushiDepositUtxos
     .reduce((sum, utxo) => sum + utxo.token!.amount, 0n);
 
-  if (xSushiAvailable < amountXSushi) {
-    throw new Error(`Not enough xSushi available to enter: ${amountXSushi} required, ${xSushiAvailable} available`);
+  if (sushiAvailable < amountSushi) {
+    throw new Error(`Not enough Sushi available to enter: ${amountSushi} required, ${sushiAvailable} available`);
   }
 
-  let xSushiDepositUtxo = xSushiDepositUtxos.find(utxo => utxo.token!.amount === amountXSushi);
-  if (!xSushiDepositUtxo) {
+  let sushiDepositUtxo = sushiDepositUtxos.find(utxo => utxo.token!.amount === amountSushi);
+  if (!sushiDepositUtxo) {
     // consolidate
     await wallet.send(new TokenSendRequest({
       cashaddr: wallet.cashaddr,
-      tokenId: xSushiCategory,
-      amount: amountXSushi,
+      tokenId: sushiCategory,
+      amount: amountSushi,
     }), {
       queryBalance: false,
     });
 
-    xSushiDepositUtxo = (await wallet.getUtxos()).find(utxo => utxo.token?.tokenId === xSushiCategory && utxo.token.amount === amountXSushi);
+    sushiDepositUtxo = (await wallet.getUtxos()).find(utxo => utxo.token?.tokenId === sushiCategory && utxo.token.amount === amountSushi);
 
-    if (!xSushiDepositUtxo) {
-      throw new Error(`Failed to find a suitable xSushi UTXO after consolidation`);
+    if (!sushiDepositUtxo) {
+      throw new Error(`Failed to find a suitable Sushi UTXO after consolidation`);
     }
   }
 
@@ -87,10 +83,10 @@ export const leave = async ({
   const signatureTemplate = new SignatureTemplate(wallet.privateKey);
 
   const builder = new TransactionBuilder({ provider })
-    .addInput(sushiBarContractUtxo, contracts.sushiBar.unlock.leave(amountXSushi))
+    .addInput(sushiBarContractUtxo, contracts.sushiBar.unlock.enter(amountSushi))
     .addInput(sushiContractUtxo, contracts.sushi.unlock.spend())
     .addInput(xSushiContractUtxo, contracts.xSushi.unlock.spend())
-    .addInput(toCashScriptUtxo(xSushiDepositUtxo), signatureTemplate.unlockP2PKH())
+    .addInput(toCashScriptUtxo(sushiDepositUtxo), signatureTemplate.unlockP2PKH())
     .addInput(toCashScriptUtxo(fundingUtxos), signatureTemplate.unlockP2PKH())
     .addOutput({to: contracts.sushiBar.tokenAddress, amount: 1000n, token: {
       ...sushiBarContractUtxo.token,
@@ -103,7 +99,7 @@ export const leave = async ({
       to: contracts.sushi.tokenAddress,
       token: {
         ...sushiContractUtxo.token,
-        amount: sushiContractUtxo.token.amount - what,
+        amount: sushiContractUtxo.token.amount + amountSushi,
       },
       amount: 1000n,
     })
@@ -111,14 +107,14 @@ export const leave = async ({
       to: contracts.xSushi.tokenAddress,
       token: {
         ...xSushiContractUtxo.token,
-        amount: xSushiContractUtxo.token.amount + amountXSushi,
+        amount: xSushiContractUtxo.token.amount - what,
       },
       amount: 1000n,
     })
     .addOutput({
       to: wallet.tokenaddr,
       token: {
-        category: sushiCategory,
+        category: xSushiCategory,
         amount: what,
       },
       amount: 1000n,

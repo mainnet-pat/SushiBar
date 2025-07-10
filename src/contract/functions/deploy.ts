@@ -1,9 +1,10 @@
 import { Wallet, TestNetWallet, UtxoI, binToHex, hexToBin, TokenSendRequest } from "mainnet-js";
 import { Contract, NetworkProvider } from "cashscript";
-import { padVmNumber } from "../utils";
-import SushiArtifact from "../../artifacts/Sushi.artifact.js";
-import xSushiArtifact from "../../artifacts/xSushi.artifact.js";
-import SushiBarArtifact from "../../artifacts/SushiBar.artifact.js";
+import { padVmNumber } from "../../utils";
+import SushiArtifact from "../../../artifacts/Sushi.artifact.js";
+import xSushiArtifact from "../../../artifacts/xSushi.artifact.js";
+import SushiBarArtifact from "../../../artifacts/SushiBar.artifact.js";
+import { MaxSushiBarShares } from "../const.js";
 
 export const consolidateUtxos = async ({
   wallet,
@@ -54,7 +55,7 @@ export const deploy = async ({
   if (!sushiCategory) {
     const genesisUtxo = await getTokenGenesisUtxo({ wallet, provider });
     const response = await wallet.tokenGenesis({
-      amount: 100000000000n,
+      amount: MaxSushiBarShares,
     }, [], {
       ensureUtxos: [genesisUtxo],
       queryBalance: false,
@@ -67,7 +68,7 @@ export const deploy = async ({
   {
     const genesisUtxo = await getTokenGenesisUtxo({ wallet, provider });
     const response = await wallet.tokenGenesis({
-      amount: 100000000000n,
+      amount: MaxSushiBarShares,
     }, [], {
       ensureUtxos: [genesisUtxo],
       queryBalance: false,
@@ -108,7 +109,7 @@ export const deploy = async ({
   await wallet.send(new TokenSendRequest({
     cashaddr: xSushiContract.address,
     tokenId: xSushiCategory,
-    amount: 100000000000n,
+    amount: MaxSushiBarShares,
   }));
 
   // "deploy" SushiBar contract, send NFT

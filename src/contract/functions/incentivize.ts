@@ -1,5 +1,5 @@
 import { NetworkProvider, SignatureTemplate, TransactionBuilder, Utxo } from "cashscript";
-import { getContracts, padVmNumber, vmToBigInt, toCashScriptUtxo } from "../utils";
+import { getContracts, padVmNumber, vmToBigInt, toCashScriptUtxo } from "../../utils";
 import { binToHex, TestNetWallet, TokenSendRequest } from "mainnet-js";
 
 export const incentivize = async ({

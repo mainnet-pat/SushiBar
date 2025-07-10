@@ -1,13 +1,9 @@
 import { MockNetworkProvider, NetworkProvider, randomToken, randomUtxo } from "cashscript";
-import { deploy, enter, getContracts, incentivize, leave, vmToBigInt } from "../src";
+import { deploy, enter, getContracts, incentivize, leave, SushiBar, vmToBigInt } from "../src";
 import { aliceAddress, alicePriv, bobAddress, bobPriv, charlieAddress, charliePriv, daveAddress, davePriv, MockWallet } from "./shared";
 
 let provider: MockNetworkProvider;
-let categories: {
-  sushiCategory: string;
-  xSushiCategory: string;
-  sushiBarCategory: string;
-};
+let sushiBar: SushiBar;
 
 describe("SushiBar", function () {
   beforeEach(async function () {
@@ -17,15 +13,16 @@ describe("SushiBar", function () {
 
     const wallet = await MockWallet(provider, davePriv);
 
-    categories = await deploy({
-      wallet, provider,
+    sushiBar = await SushiBar.deploy({
+      wallet,
+      provider,
     });
 
     provider.addUtxo(aliceAddress, randomUtxo());
     provider.addUtxo(aliceAddress, randomUtxo({
       token: randomToken({
         amount: 100n,
-        category: categories.sushiCategory,
+        category: sushiBar.sushiCategory,
       }),
     }));
 
@@ -33,7 +30,7 @@ describe("SushiBar", function () {
     provider.addUtxo(bobAddress, randomUtxo({
       token: randomToken({
         amount: 100n,
-        category: categories.sushiCategory,
+        category: sushiBar.sushiCategory,
       }),
     }));
 
@@ -41,67 +38,41 @@ describe("SushiBar", function () {
     provider.addUtxo(charlieAddress, randomUtxo({
       token: randomToken({
         amount: 100n,
-        category: categories.sushiCategory,
+        category: sushiBar.sushiCategory,
       }),
     }));
   });
 
   it("should not allow enter if not enough tokens", async function () {
-    await expect(enter({
+    await expect(sushiBar.enter({
       wallet: await MockWallet(provider, alicePriv),
-      provider: provider,
-      sushiCategory: categories.sushiCategory,
-      xSushiCategory: categories.xSushiCategory,
-      sushiBarCategory: categories.sushiBarCategory,
       amountSushi: 200n, // Alice only has 100 SUSHI
     })).rejects.toThrow("Not enough Sushi available to enter");
 
-    const result = await enter({
+    const result = await sushiBar.enter({
       wallet: await MockWallet(provider, alicePriv),
-      provider: provider,
-      sushiCategory: categories.sushiCategory,
-      xSushiCategory: categories.xSushiCategory,
-      sushiBarCategory: categories.sushiBarCategory,
       amountSushi: 100n,
     });
 
     expect(result).toBe(100n);
 
-    const contracts = getContracts(
-      categories.sushiCategory,
-      categories.xSushiCategory,
-      categories.sushiBarCategory,
-      provider
-    );
-    const sushiBarContractUtxo = (await contracts.sushiBar.getUtxos())[0]!;
-
-    const totalSushi = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(0, 16));
-    const totalShares = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(16, 32));
-
+    const { totalSushi, totalShares } = await sushiBar.getState();
     expect(totalSushi).toBeGreaterThanOrEqual(101n);
-    expect(totalShares).toBeGreaterThanOrEqual(100n);
+    expect(totalShares).toBeGreaterThanOrEqual(101n);
 
     const aliceWallet = await MockWallet(provider, alicePriv);
-    expect(await aliceWallet.getTokenBalance(categories.sushiCategory)).toBe(0n);
-    expect(await aliceWallet.getTokenBalance(categories.xSushiCategory)).toBe(100n);
+    expect(await aliceWallet.getTokenBalance(sushiBar.sushiCategory)).toBe(0n);
+    expect(await aliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(100n);
   });
 
   it("should not allow withraw more than what you have", async function () {
-    await enter({
+    await sushiBar.enter({
       wallet: await MockWallet(provider, alicePriv),
-      provider: provider,
-      sushiCategory: categories.sushiCategory,
-      xSushiCategory: categories.xSushiCategory,
-      sushiBarCategory: categories.sushiBarCategory,
       amountSushi: 100n,
     });
 
-    await expect(leave({
+    await expect(sushiBar.leave({
       wallet: await MockWallet(provider, alicePriv),
-      provider: provider,
-      sushiCategory: categories.sushiCategory,
-      xSushiCategory: categories.xSushiCategory,
-      sushiBarCategory: categories.sushiBarCategory,
       amountXSushi: 200n,
     })).rejects.toThrow("Not enough Sushi available in SushiBar to leave");
   });
@@ -111,93 +82,55 @@ describe("SushiBar", function () {
     const bobWallet = await MockWallet(provider, bobPriv);
 
     // Alice enters and gets 20 shares. Bob enters and gets 10 shares.
-    await enter({
+    await sushiBar.enter({
       wallet: alliceWallet,
-      provider: provider,
-      sushiCategory: categories.sushiCategory,
-      xSushiCategory: categories.xSushiCategory,
-      sushiBarCategory: categories.sushiBarCategory,
       amountSushi: 20n,
     });
 
-    await enter({
+    await sushiBar.enter({
       wallet: bobWallet,
-      provider: provider,
-      sushiCategory: categories.sushiCategory,
-      xSushiCategory: categories.xSushiCategory,
-      sushiBarCategory: categories.sushiBarCategory,
       amountSushi: 10n,
     });
 
-    expect(await alliceWallet.getTokenBalance(categories.xSushiCategory)).toBe(20n);
-    expect(await bobWallet.getTokenBalance(categories.xSushiCategory)).toBe(10n);
+    expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(20n);
+    expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(10n);
 
     {
-      const contracts = getContracts(
-        categories.sushiCategory,
-        categories.xSushiCategory,
-        categories.sushiBarCategory,
-        provider
-      );
-      const sushiBarContractUtxo = (await contracts.sushiBar.getUtxos())[0]!;
-
-      const totalSushi = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(0, 16));
-      const totalShares = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(16, 32));
-
+      const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBeGreaterThanOrEqual(31n);
       expect(totalShares).toBeGreaterThanOrEqual(30n);
     }
 
     // SushiBar get 20 more SUSHIs from an external source.
-    await incentivize({
+    await sushiBar.incentivize({
       wallet: await MockWallet(provider, charliePriv),
-      provider: provider,
-      sushiCategory: categories.sushiCategory,
-      xSushiCategory: categories.xSushiCategory,
-      sushiBarCategory: categories.sushiBarCategory,
       amountSushi: 20n,
     });
     // Alice deposits 10 more SUSHIs. She should receive 10*30/50 = 6 shares.
-    await enter({
+    await sushiBar.enter({
       wallet: alliceWallet,
-      provider: provider,
-      sushiCategory: categories.sushiCategory,
-      xSushiCategory: categories.xSushiCategory,
-      sushiBarCategory: categories.sushiBarCategory,
       amountSushi: 10n,
     });
 
-    expect(await alliceWallet.getTokenBalance(categories.xSushiCategory)).toBe(26n);
-    expect(await bobWallet.getTokenBalance(categories.xSushiCategory)).toBe(10n);
-    // // Bob withdraws 5 shares. He should receive 5*60/36 = 8 shares
-    await leave({
+    expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(26n);
+    expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(10n);
+
+    // Bob withdraws 5 shares. He should receive 5*60/36 = 8 shares
+    await sushiBar.leave({
       wallet: bobWallet,
-      provider: provider,
-      sushiCategory: categories.sushiCategory,
-      xSushiCategory: categories.xSushiCategory,
-      sushiBarCategory: categories.sushiBarCategory,
       amountXSushi: 5n,
     });
-    expect(await alliceWallet.getTokenBalance(categories.xSushiCategory)).toBe(26n);
-    expect(await bobWallet.getTokenBalance(categories.xSushiCategory)).toBe(5n);
+    expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(26n);
+    expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(5n);
 
     {
-      const contracts = getContracts(
-        categories.sushiCategory,
-        categories.xSushiCategory,
-        categories.sushiBarCategory,
-        provider
-      );
-      const sushiBarContractUtxo = (await contracts.sushiBar.getUtxos())[0]!;
-
-      const totalSushi = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(0, 16));
-      const totalShares = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(16, 32));
+      const { totalSushi, totalShares } = await sushiBar.getState();
 
       expect(totalSushi).toBeGreaterThanOrEqual(53n);
       expect(totalShares).toBeGreaterThanOrEqual(30n);
     }
 
-    expect(await alliceWallet.getTokenBalance(categories.sushiCategory)).toBe(70n);
-    expect(await bobWallet.getTokenBalance(categories.sushiCategory)).toBe(98n);
+    expect(await alliceWallet.getTokenBalance(sushiBar.sushiCategory)).toBe(70n);
+    expect(await bobWallet.getTokenBalance(sushiBar.sushiCategory)).toBe(98n);
   });
 });

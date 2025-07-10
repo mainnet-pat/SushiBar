@@ -1,7 +1,9 @@
 import { MockNetworkProvider, randomUtxo } from "cashscript";
 import { aliceAddress, MockWallet } from "../shared";
-import { deploy, getTokenGenesisUtxo } from "../../src/contract/deploy.js";
+import { deploy, getTokenGenesisUtxo } from "../../src/contract/functions/deploy.js";
 import { getContracts } from "../../src/utils.js";
+import { MaxSushiBarShares } from "../../src/contract/const.js";
+import { SushiBar } from "../../src/index.js";
 
 describe("Deployment tests", () => {
   test("Should deploy all contracts", async () => {
@@ -11,19 +13,17 @@ describe("Deployment tests", () => {
 
     const wallet = await MockWallet(provider);
 
-    const result = await deploy({
+    const sushiBar = await SushiBar.deploy({
       wallet, provider,
     });
 
-    expect(result.sushiCategory).toBeDefined();
-    expect(result.xSushiCategory).toBeDefined();
-    expect(result.sushiBarCategory).toBeDefined();
+    expect(sushiBar.sushiCategory).toBeDefined();
+    expect(sushiBar.xSushiCategory).toBeDefined();
+    expect(sushiBar.sushiBarCategory).toBeDefined();
 
-    const contracts = getContracts(result.sushiCategory, result.xSushiCategory, result.sushiBarCategory, provider);
-
-    expect(await contracts.sushi.getUtxos()).toHaveLength(1);
-    expect(await contracts.xSushi.getUtxos()).toHaveLength(1);
-    expect(await contracts.sushiBar.getUtxos()).toHaveLength(1);
+    expect(await sushiBar.sushiContract.getUtxos()).toHaveLength(1);
+    expect(await sushiBar.xSushiContract.getUtxos()).toHaveLength(1);
+    expect(await sushiBar.sushiBarContract.getUtxos()).toHaveLength(1);
   });
 
   test("Given sushi token is already created, deploy all contracts", async () => {
@@ -35,7 +35,7 @@ describe("Deployment tests", () => {
 
     const genesisUtxo = await getTokenGenesisUtxo({ wallet, provider });
     const response = await wallet.tokenGenesis({
-      amount: 100000000000n,
+      amount: MaxSushiBarShares,
     }, [], {
       ensureUtxos: [genesisUtxo],
       queryBalance: false,
@@ -43,19 +43,17 @@ describe("Deployment tests", () => {
 
     const sushiCategory = response.tokenIds![0]!;
 
-    const result = await deploy({
+    const sushiBar = await SushiBar.deploy({
       wallet, provider,
       sushiCategory: sushiCategory,
     });
 
-    expect(result.sushiCategory).toBe(sushiCategory);
-    expect(result.xSushiCategory).toBeDefined();
-    expect(result.sushiBarCategory).toBeDefined();
+    expect(sushiBar.sushiCategory).toBe(sushiCategory);
+    expect(sushiBar.xSushiCategory).toBeDefined();
+    expect(sushiBar.sushiBarCategory).toBeDefined();
 
-    const contracts = getContracts(result.sushiCategory, result.xSushiCategory, result.sushiBarCategory, provider);
-
-    expect(await contracts.sushi.getUtxos()).toHaveLength(1);
-    expect(await contracts.xSushi.getUtxos()).toHaveLength(1);
-    expect(await contracts.sushiBar.getUtxos()).toHaveLength(1);
+    expect(await sushiBar.sushiContract.getUtxos()).toHaveLength(1);
+    expect(await sushiBar.xSushiContract.getUtxos()).toHaveLength(1);
+    expect(await sushiBar.sushiBarContract.getUtxos()).toHaveLength(1);
   });
 });
