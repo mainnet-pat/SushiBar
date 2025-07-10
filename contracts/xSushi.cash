@@ -1,0 +1,44 @@
+// A simple contract to contain xSushi tokens which ensures its self-preservation under some rules.
+contract xSushi(bytes xSushiCategory, bytes sushiBarCategory) {
+  // This function is to move sushi tokens in context of SushiBar contract.
+  // Token amounts are ensured in SushiBar contract.
+  function spend() {
+    require(tx.inputs[0].tokenCategory.split(32)[0] == sushiBarCategory, "Not a SushiBar contract");
+    require(tx.inputs[0].lockingBytecode == tx.outputs[0].lockingBytecode, "Invalid SushiBar locking bytecode");
+
+    require(this.activeInputIndex == 2, "Invalid input index for xSushi");
+    require(tx.inputs[this.activeInputIndex].tokenCategory.split(32)[0] == xSushiCategory, "Not a xSushi token");
+    require(tx.inputs[this.activeInputIndex].lockingBytecode == tx.outputs[this.activeInputIndex].lockingBytecode, "Invalid xSushi locking bytecode");
+  }
+
+  // This function is used to merge xSushi tokens on different contract instances.
+  // tx layout:
+  //  inputs:
+  //   0: contract: xSushi input
+  //   1: contract: xSushi input
+  //   2: BCH funding input, no token
+  //  outputs:
+  //   0: contract: xSushi output, token amounts summed
+  //   1: BCH change
+  function merge() {
+    // inputs
+    require(tx.inputs.length == 3, "Invalid number of inputs for merge");
+
+    require(tx.inputs[0].tokenCategory.split(32)[0] == xSushiCategory, "Not a xSushi token");
+    require(tx.inputs[0].lockingBytecode == tx.outputs[0].lockingBytecode, "Invalid xSushi locking bytecode");
+
+    require(tx.inputs[1].tokenCategory.split(32)[0] == xSushiCategory, "Not a xSushi token");
+    require(tx.inputs[1].lockingBytecode == tx.outputs[1].lockingBytecode, "Invalid xSushi locking bytecode");
+
+    require(tx.inputs[2].tokenCategory == 0x, "BCH funding input must not have a token");
+
+    // outputs
+    require(tx.outputs.length == 2, "Invalid number of outputs for merge");
+
+    require(tx.inputs[0].tokenAmount + tx.inputs[1].tokenAmount == tx.outputs[0].tokenAmount, "Input xSushi amount must be greater than or equal to output xSushi amount");
+
+    require(tx.outputs[1].tokenCategory == 0x, "BCH change output must not have a token");
+
+    // do not burden the change output and let the user pay the fees
+  }
+}

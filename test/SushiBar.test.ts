@@ -1,48 +1,203 @@
+import { MockNetworkProvider, NetworkProvider, randomToken, randomUtxo } from "cashscript";
+import { deploy, enter, getContracts, incentivize, leave, vmToBigInt } from "../src";
+import { aliceAddress, alicePriv, bobAddress, bobPriv, charlieAddress, charliePriv, daveAddress, davePriv, MockWallet } from "./shared";
+
+let provider: MockNetworkProvider;
+let categories: {
+  sushiCategory: string;
+  xSushiCategory: string;
+  sushiBarCategory: string;
+};
+
 describe("SushiBar", function () {
   beforeEach(async function () {
-    this.sushi = await this.SushiToken.deploy()
-    this.bar = await this.SushiBar.deploy(this.sushi.address)
-    this.sushi.mint(this.alice.address, "100")
-    this.sushi.mint(this.bob.address, "100")
-    this.sushi.mint(this.carol.address, "100")
-  })
+    provider = new MockNetworkProvider();
+    provider.reset();
+    provider.addUtxo(daveAddress, randomUtxo({}));
 
-  it("should not allow enter if not enough approve", async function () {
-    await expect(this.bar.enter("100")).to.be.revertedWith("ERC20: transfer amount exceeds allowance")
-    await this.sushi.approve(this.bar.address, "50")
-    await expect(this.bar.enter("100")).to.be.revertedWith("ERC20: transfer amount exceeds allowance")
-    await this.sushi.approve(this.bar.address, "100")
-    await this.bar.enter("100")
-    expect(await this.bar.balanceOf(this.alice.address)).to.equal("100")
-  })
+    const wallet = await MockWallet(provider, davePriv);
+
+    categories = await deploy({
+      wallet, provider,
+    });
+
+    provider.addUtxo(aliceAddress, randomUtxo());
+    provider.addUtxo(aliceAddress, randomUtxo({
+      token: randomToken({
+        amount: 100n,
+        category: categories.sushiCategory,
+      }),
+    }));
+
+    provider.addUtxo(bobAddress, randomUtxo());
+    provider.addUtxo(bobAddress, randomUtxo({
+      token: randomToken({
+        amount: 100n,
+        category: categories.sushiCategory,
+      }),
+    }));
+
+    provider.addUtxo(charlieAddress, randomUtxo());
+    provider.addUtxo(charlieAddress, randomUtxo({
+      token: randomToken({
+        amount: 100n,
+        category: categories.sushiCategory,
+      }),
+    }));
+  });
+
+  it("should not allow enter if not enough tokens", async function () {
+    await expect(enter({
+      wallet: await MockWallet(provider, alicePriv),
+      provider: provider,
+      sushiCategory: categories.sushiCategory,
+      xSushiCategory: categories.xSushiCategory,
+      sushiBarCategory: categories.sushiBarCategory,
+      amountSushi: 200n, // Alice only has 100 SUSHI
+    })).rejects.toThrow("Not enough Sushi available to enter");
+
+    const result = await enter({
+      wallet: await MockWallet(provider, alicePriv),
+      provider: provider,
+      sushiCategory: categories.sushiCategory,
+      xSushiCategory: categories.xSushiCategory,
+      sushiBarCategory: categories.sushiBarCategory,
+      amountSushi: 100n,
+    });
+
+    expect(result).toBe(100n);
+
+    const contracts = getContracts(
+      categories.sushiCategory,
+      categories.xSushiCategory,
+      categories.sushiBarCategory,
+      provider
+    );
+    const sushiBarContractUtxo = (await contracts.sushiBar.getUtxos())[0]!;
+
+    const totalSushi = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(0, 16));
+    const totalShares = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(16, 32));
+
+    expect(totalSushi).toBeGreaterThanOrEqual(101n);
+    expect(totalShares).toBeGreaterThanOrEqual(100n);
+
+    const aliceWallet = await MockWallet(provider, alicePriv);
+    expect(await aliceWallet.getTokenBalance(categories.sushiCategory)).toBe(0n);
+    expect(await aliceWallet.getTokenBalance(categories.xSushiCategory)).toBe(100n);
+  });
 
   it("should not allow withraw more than what you have", async function () {
-    await this.sushi.approve(this.bar.address, "100")
-    await this.bar.enter("100")
-    await expect(this.bar.leave("200")).to.be.revertedWith("ERC20: burn amount exceeds balance")
-  })
+    await enter({
+      wallet: await MockWallet(provider, alicePriv),
+      provider: provider,
+      sushiCategory: categories.sushiCategory,
+      xSushiCategory: categories.xSushiCategory,
+      sushiBarCategory: categories.sushiBarCategory,
+      amountSushi: 100n,
+    });
+
+    await expect(leave({
+      wallet: await MockWallet(provider, alicePriv),
+      provider: provider,
+      sushiCategory: categories.sushiCategory,
+      xSushiCategory: categories.xSushiCategory,
+      sushiBarCategory: categories.sushiBarCategory,
+      amountXSushi: 200n,
+    })).rejects.toThrow("Not enough Sushi available in SushiBar to leave");
+  });
 
   it("should work with more than one participant", async function () {
-    await this.sushi.approve(this.bar.address, "100")
-    await this.sushi.connect(this.bob).approve(this.bar.address, "100", { from: this.bob.address })
+    const alliceWallet = await MockWallet(provider, alicePriv);
+    const bobWallet = await MockWallet(provider, bobPriv);
+
     // Alice enters and gets 20 shares. Bob enters and gets 10 shares.
-    await this.bar.enter("20")
-    await this.bar.connect(this.bob).enter("10", { from: this.bob.address })
-    expect(await this.bar.balanceOf(this.alice.address)).to.equal("20")
-    expect(await this.bar.balanceOf(this.bob.address)).to.equal("10")
-    expect(await this.sushi.balanceOf(this.bar.address)).to.equal("30")
+    await enter({
+      wallet: alliceWallet,
+      provider: provider,
+      sushiCategory: categories.sushiCategory,
+      xSushiCategory: categories.xSushiCategory,
+      sushiBarCategory: categories.sushiBarCategory,
+      amountSushi: 20n,
+    });
+
+    await enter({
+      wallet: bobWallet,
+      provider: provider,
+      sushiCategory: categories.sushiCategory,
+      xSushiCategory: categories.xSushiCategory,
+      sushiBarCategory: categories.sushiBarCategory,
+      amountSushi: 10n,
+    });
+
+    expect(await alliceWallet.getTokenBalance(categories.xSushiCategory)).toBe(20n);
+    expect(await bobWallet.getTokenBalance(categories.xSushiCategory)).toBe(10n);
+
+    {
+      const contracts = getContracts(
+        categories.sushiCategory,
+        categories.xSushiCategory,
+        categories.sushiBarCategory,
+        provider
+      );
+      const sushiBarContractUtxo = (await contracts.sushiBar.getUtxos())[0]!;
+
+      const totalSushi = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(0, 16));
+      const totalShares = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(16, 32));
+
+      expect(totalSushi).toBeGreaterThanOrEqual(31n);
+      expect(totalShares).toBeGreaterThanOrEqual(30n);
+    }
+
     // SushiBar get 20 more SUSHIs from an external source.
-    await this.sushi.connect(this.carol).transfer(this.bar.address, "20", { from: this.carol.address })
+    await incentivize({
+      wallet: await MockWallet(provider, charliePriv),
+      provider: provider,
+      sushiCategory: categories.sushiCategory,
+      xSushiCategory: categories.xSushiCategory,
+      sushiBarCategory: categories.sushiBarCategory,
+      amountSushi: 20n,
+    });
     // Alice deposits 10 more SUSHIs. She should receive 10*30/50 = 6 shares.
-    await this.bar.enter("10")
-    expect(await this.bar.balanceOf(this.alice.address)).to.equal("26")
-    expect(await this.bar.balanceOf(this.bob.address)).to.equal("10")
-    // Bob withdraws 5 shares. He should receive 5*60/36 = 8 shares
-    await this.bar.connect(this.bob).leave("5", { from: this.bob.address })
-    expect(await this.bar.balanceOf(this.alice.address)).to.equal("26")
-    expect(await this.bar.balanceOf(this.bob.address)).to.equal("5")
-    expect(await this.sushi.balanceOf(this.bar.address)).to.equal("52")
-    expect(await this.sushi.balanceOf(this.alice.address)).to.equal("70")
-    expect(await this.sushi.balanceOf(this.bob.address)).to.equal("98")
-  })
-})
+    await enter({
+      wallet: alliceWallet,
+      provider: provider,
+      sushiCategory: categories.sushiCategory,
+      xSushiCategory: categories.xSushiCategory,
+      sushiBarCategory: categories.sushiBarCategory,
+      amountSushi: 10n,
+    });
+
+    expect(await alliceWallet.getTokenBalance(categories.xSushiCategory)).toBe(26n);
+    expect(await bobWallet.getTokenBalance(categories.xSushiCategory)).toBe(10n);
+    // // Bob withdraws 5 shares. He should receive 5*60/36 = 8 shares
+    await leave({
+      wallet: bobWallet,
+      provider: provider,
+      sushiCategory: categories.sushiCategory,
+      xSushiCategory: categories.xSushiCategory,
+      sushiBarCategory: categories.sushiBarCategory,
+      amountXSushi: 5n,
+    });
+    expect(await alliceWallet.getTokenBalance(categories.xSushiCategory)).toBe(26n);
+    expect(await bobWallet.getTokenBalance(categories.xSushiCategory)).toBe(5n);
+
+    {
+      const contracts = getContracts(
+        categories.sushiCategory,
+        categories.xSushiCategory,
+        categories.sushiBarCategory,
+        provider
+      );
+      const sushiBarContractUtxo = (await contracts.sushiBar.getUtxos())[0]!;
+
+      const totalSushi = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(0, 16));
+      const totalShares = vmToBigInt(sushiBarContractUtxo.token!.nft!.commitment.slice(16, 32));
+
+      expect(totalSushi).toBeGreaterThanOrEqual(53n);
+      expect(totalShares).toBeGreaterThanOrEqual(30n);
+    }
+
+    expect(await alliceWallet.getTokenBalance(categories.sushiCategory)).toBe(70n);
+    expect(await bobWallet.getTokenBalance(categories.sushiCategory)).toBe(98n);
+  });
+});

@@ -1,11 +1,15 @@
 // A simple contract to contain Sushi tokens which ensures its self-preservation under some rules.
-contract Sushi(bytes sushiCategory) {
-  // // This function is to move sushi tokens from the contract to a user.
-  // function spend() {
-  //   require(this.activeInputIndex == 0, "Invalid input index for Sushi");
-  //   require(tx.inputs[this.activeInputIndex].tokenCategory.split(32)[0] == sushiCategory, "Not a Sushi token");
-  //   require(tx.inputs[this.activeInputIndex].lockingBytecode == tx.outputs[this.activeInputIndex].lockingBytecode, "Invalid Sushi locking bytecode");
-  // }
+contract Sushi(bytes sushiCategory, bytes sushiBarCategory) {
+  // This function is to move sushi tokens in context of SushiBar contract.
+  // Token amounts are ensured in SushiBar contract.
+  function spend() {
+    require(tx.inputs[0].tokenCategory.split(32)[0] == sushiBarCategory, "Not a SushiBar contract");
+    require(tx.inputs[0].lockingBytecode == tx.outputs[0].lockingBytecode, "Invalid SushiBar locking bytecode");
+
+    require(this.activeInputIndex == 1, "Invalid input index for Sushi");
+    require(tx.inputs[this.activeInputIndex].tokenCategory.split(32)[0] == sushiCategory, "Not a Sushi token");
+    require(tx.inputs[this.activeInputIndex].lockingBytecode == tx.outputs[this.activeInputIndex].lockingBytecode, "Invalid Sushi locking bytecode");
+  }
 
   // This function is used to merge Sushi tokens on different contract instances.
   // tx layout:

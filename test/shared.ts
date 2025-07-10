@@ -1,5 +1,5 @@
 import { encodeCashAddress, encodePrivateKeyWif, hash160, hexToBin, secp256k1 } from "@bitauth/libauth";
-import { MockNetworkProvider, SignatureTemplate } from "cashscript";
+import { MockNetworkProvider, SignatureTemplate, TokenDetails, Utxo } from "cashscript";
 import { binToHex, TestNetWallet, TokenI, UtxoI } from "mainnet-js";
 
 export const alicePriv = hexToBin('1'.repeat(64));
@@ -26,11 +26,11 @@ export const davePub = secp256k1.derivePublicKeyCompressed(davePriv) as Uint8Arr
 export const davePkh = hash160(davePub);
 export const daveAddress = encodeCashAddress({ prefix: 'bchtest', type: 'p2pkh', payload: davePkh, throwErrors: true }).address;
 
-export const MockWallet = async (provider: MockNetworkProvider): Promise<TestNetWallet> => {
-  const wif = encodePrivateKeyWif(alicePriv, "testnet");
+export const MockWallet = async (provider: MockNetworkProvider, privateKey?: Uint8Array): Promise<TestNetWallet> => {
+  const wif = encodePrivateKeyWif(privateKey ?? alicePriv, "testnet");
   const wallet = await TestNetWallet.fromWIF(wif);
   wallet.getAddressUtxos = async (address?: string): Promise<UtxoI[]> => {
-    const utxos = await provider.getUtxos(address ?? aliceAddress);
+    const utxos = await provider.getUtxos(address ?? wallet.cashaddr);
     return utxos.map(utxo => ({
       txid: utxo.txid,
       vout: utxo.vout,
