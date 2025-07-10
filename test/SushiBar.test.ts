@@ -74,7 +74,7 @@ describe("SushiBar", function () {
     await expect(sushiBar.leave({
       wallet: await MockWallet(provider, alicePriv),
       amountXSushi: 200n,
-    })).rejects.toThrow("Not enough Sushi available in SushiBar to leave");
+    })).rejects.toThrow("Not enough xSushi available in SushiBar to leave");
   });
 
   it("should work with more than one participant", async function () {

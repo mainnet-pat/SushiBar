@@ -1,7 +1,7 @@
 import { NetworkProvider, SignatureTemplate, TransactionBuilder } from "cashscript";
-import { getContracts, padVmNumber, vmToBigInt, toCashScriptUtxo } from "../../utils";
-import { binToHex, TestNetWallet, TokenSendRequest } from "mainnet-js";
-import { MaxSushiBarShares } from "../const";
+import { getContracts, padVmNumber, vmToBigInt, toCashScriptUtxo } from "../../utils.js";
+import { binToHex, TestNetWallet, TokenSendRequest, Wallet } from "mainnet-js";
+import { MaxSushiBarShares } from "../const.js";
 
 export const incentivize = async ({
   amountSushi,
@@ -12,7 +12,7 @@ export const incentivize = async ({
   sushiBarCategory,
 } : {
   amountSushi: bigint,
-  wallet: TestNetWallet,
+  wallet: Wallet | TestNetWallet,
   provider: NetworkProvider,
   sushiCategory: string,
   xSushiCategory: string,
