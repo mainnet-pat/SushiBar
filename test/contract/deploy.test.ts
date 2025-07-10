@@ -1,7 +1,6 @@
 import { MockNetworkProvider, randomUtxo } from "cashscript";
 import { aliceAddress, MockWallet } from "../shared";
-import { deploy, getTokenGenesisUtxo } from "../../src/contract/functions/deploy.js";
-import { getContracts } from "../../src/utils.js";
+import { getTokenGenesisUtxo } from "../../src/contract/functions/deploy.js";
 import { MaxSushiBarShares } from "../../src/contract/const.js";
 import { SushiBar } from "../../src/index.js";
 

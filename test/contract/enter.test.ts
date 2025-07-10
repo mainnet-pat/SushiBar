@@ -1,5 +1,5 @@
 import { MockNetworkProvider, randomUtxo } from "cashscript";
-import { enter, deploy, getContracts, vmToBigInt, SushiBar } from "../../src";
+import { SushiBar } from "../../src";
 import { aliceAddress, MockWallet } from "../shared";
 
 describe("Enter tests", () => {

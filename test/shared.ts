@@ -1,5 +1,5 @@
 import { encodeCashAddress, encodePrivateKeyWif, hash160, hexToBin, secp256k1 } from "@bitauth/libauth";
-import { MockNetworkProvider, SignatureTemplate, TokenDetails, Utxo } from "cashscript";
+import { MockNetworkProvider, SignatureTemplate } from "cashscript";
 import { binToHex, TestNetWallet, TokenI, UtxoI } from "mainnet-js";
 
 export const alicePriv = hexToBin('1'.repeat(64));

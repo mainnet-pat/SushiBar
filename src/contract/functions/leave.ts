@@ -1,4 +1,4 @@
-import { NetworkProvider, SignatureTemplate, TransactionBuilder, Utxo } from "cashscript";
+import { NetworkProvider, SignatureTemplate, TransactionBuilder } from "cashscript";
 import { getContracts, padVmNumber, vmToBigInt, toCashScriptUtxo } from "../../utils";
 import { binToHex, TestNetWallet, TokenSendRequest } from "mainnet-js";
 

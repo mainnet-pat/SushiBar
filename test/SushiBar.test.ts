@@ -1,5 +1,5 @@
 import { MockNetworkProvider, NetworkProvider, randomToken, randomUtxo } from "cashscript";
-import { deploy, enter, getContracts, incentivize, leave, SushiBar, vmToBigInt } from "../src";
+import { SushiBar } from "../src";
 import { aliceAddress, alicePriv, bobAddress, bobPriv, charlieAddress, charliePriv, daveAddress, davePriv, MockWallet } from "./shared";
 
 let provider: MockNetworkProvider;
