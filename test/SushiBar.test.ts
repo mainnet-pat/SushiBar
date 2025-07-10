@@ -57,8 +57,8 @@ describe("SushiBar", function () {
     expect(result).toBe(100n);
 
     const { totalSushi, totalShares } = await sushiBar.getState();
-    expect(totalSushi).toBeGreaterThanOrEqual(101n);
-    expect(totalShares).toBeGreaterThanOrEqual(101n);
+    expect(totalSushi).toBe(101n);
+    expect(totalShares).toBe(101n);
 
     const aliceWallet = await MockWallet(provider, alicePriv);
     expect(await aliceWallet.getTokenBalance(sushiBar.sushiCategory)).toBe(0n);
@@ -97,8 +97,8 @@ describe("SushiBar", function () {
 
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
-      expect(totalSushi).toBeGreaterThanOrEqual(31n);
-      expect(totalShares).toBeGreaterThanOrEqual(30n);
+      expect(totalSushi).toBe(31n);
+      expect(totalShares).toBe(31n);
     }
 
     // SushiBar get 20 more SUSHIs from an external source.
@@ -106,11 +106,24 @@ describe("SushiBar", function () {
       wallet: await MockWallet(provider, charliePriv),
       amountSushi: 20n,
     });
-    // Alice deposits 10 more SUSHIs. She should receive 10*30/50 = 6 shares.
+
+    {
+      const { totalSushi, totalShares } = await sushiBar.getState();
+      expect(totalSushi).toBe(51n);
+      expect(totalShares).toBe(31n);
+    }
+
+    // Alice deposits 10 more SUSHIs. She should receive 10*31/51 = 6 shares.
     await sushiBar.enter({
       wallet: alliceWallet,
       amountSushi: 10n,
     });
+
+    {
+      const { totalSushi, totalShares } = await sushiBar.getState();
+      expect(totalSushi).toBe(61n);
+      expect(totalShares).toBe(37n);
+    }
 
     expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(26n);
     expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(10n);
@@ -126,8 +139,8 @@ describe("SushiBar", function () {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
 
-      expect(totalSushi).toBeGreaterThanOrEqual(53n);
-      expect(totalShares).toBeGreaterThanOrEqual(30n);
+      expect(totalSushi).toBe(53n);
+      expect(totalShares).toBe(32n);
     }
 
     expect(await alliceWallet.getTokenBalance(sushiBar.sushiCategory)).toBe(70n);

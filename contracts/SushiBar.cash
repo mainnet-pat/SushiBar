@@ -5,6 +5,9 @@ contract SushiBar(bytes32 sushiBarCategory, bytes32 sushiCategory, bytes32 xSush
   // Enter the bar. Pay some SUSHIs. Earn some shares.
   // Locks Sushi and mints xSushi
 
+  // At all times the amount of xSushi released + amount of xSushi tokens in xSushiContract must be equal to MaxSushiBarShares
+  // const int MaxSushiBarShares = 100000000000; // 100 billion shares
+
   // tx layout:
   //  inputs:
   //   0: contract: SushiBar input, holding mutable NFT, commitment [Sushi staked amount, xSushi released supply]
@@ -61,13 +64,14 @@ contract SushiBar(bytes32 sushiBarCategory, bytes32 sushiCategory, bytes32 xSush
 
     // Calculate and release the amount of xSushi the Sushi is worth. The ratio will change overtime, as xSushi is returned/released and Sushi deposited + gained from fees / withdrawn.
     int what = amount * totalShares / totalSushi;
-    if (totalShares == 0) {
+    if (totalShares <= 1) {
       what = amount; // if this is the first deposit, we just release the same amount of xSushi as Sushi
     }
     require(tx.outputs[0].nftCommitment == bytes8(totalSushi + amount) + bytes8(totalShares + what), "SushiBar commitment does not match expected values after deposit");
     require(tx.outputs[2].tokenAmount == tx.inputs[2].tokenAmount - what, "xSushi output amount does not match expected amount after deposit");
     require(tx.outputs[3].tokenAmount == what, "xSushi output amount does not match Sushi input amount");
 
+    require(totalShares + what + tx.outputs[2].tokenAmount == 100000000000, "Total shares must not exceed 100 billion"); // MaxSushiBarShares
     // do not burden the change output and let the user pay the fees
   }
 
@@ -82,9 +86,9 @@ contract SushiBar(bytes32 sushiBarCategory, bytes32 sushiCategory, bytes32 xSush
   //   3: xSushi token input holding exact xSushi to be returned, no NFT
   //   4: BCH funding input, no token
   //  outputs:
-  //   0: contract: SushiBar input, holding mutable NFT, commitment [Sushi staked amount, xSushi released supply]
-  //   1: contract: Sushi input, holding staked tokens, no NFT
-  //   2: contract: xSushi input, holding entire xSushi supply, no NFT
+  //   0: contract: SushiBar output, holding mutable NFT, commitment [Sushi staked amount, xSushi released supply]
+  //   1: contract: Sushi output, holding staked tokens, no NFT
+  //   2: contract: xSushi output, holding entire xSushi supply, no NFT
   //   3: Sushi returned to the depositor, no NFT
   //   4: BCH change
   function leave(int share) {
@@ -134,6 +138,8 @@ contract SushiBar(bytes32 sushiBarCategory, bytes32 sushiCategory, bytes32 xSush
     require(tx.outputs[0].nftCommitment == bytes8(totalSushi - what) + bytes8(totalShares - share), "SushiBar commitment does not match expected values after withdrawal");
     require(tx.outputs[1].tokenAmount == tx.inputs[1].tokenAmount - what, "Sushi output amount does not match expected amount after withdrawal");
     require(tx.outputs[3].tokenAmount == what, "Sushi output amount does not match xSushi input amount");
+
+    require(totalShares - share + tx.outputs[2].tokenAmount == 100000000000, "Total shares must not exceed 100 billion"); // MaxSushiBarShares
   }
 
   // This function is not used in the original SushiBar contract, but can be used to deposit Sushi without releasing xSushi.
@@ -147,7 +153,7 @@ contract SushiBar(bytes32 sushiBarCategory, bytes32 sushiCategory, bytes32 xSush
   //   3: Sushi token input holding exact Sushi to be staked, no NFT
   //   4: BCH funding input, no token
   //  outputs:
-  //   0: contract: SushiBar input, holding mutable NFT, commitment [Sushi staked amount, xSushi released supply]
+  //   0: contract: SushiBar output, holding mutable NFT, commitment [Sushi staked amount, xSushi released supply]
   //   1: contract: Sushi output, holding staked tokens, no NFT
   //   2: contract: xSushi output, holding entire xSushi supply, no NFT
   //   3: BCH change

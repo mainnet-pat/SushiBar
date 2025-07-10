@@ -68,7 +68,7 @@ export const deploy = async ({
   {
     const genesisUtxo = await getTokenGenesisUtxo({ wallet, provider });
     const response = await wallet.tokenGenesis({
-      amount: MaxSushiBarShares,
+      amount: MaxSushiBarShares - 1n,
     }, [], {
       ensureUtxos: [genesisUtxo],
       queryBalance: false,
@@ -105,11 +105,11 @@ export const deploy = async ({
     amount: 1n,
   }));
 
-  // "deploy" xSushi contract, send entire supply
+  // "deploy" xSushi contract, send entire supply minus 1 atomic unit
   await wallet.send(new TokenSendRequest({
     cashaddr: xSushiContract.address,
     tokenId: xSushiCategory,
-    amount: MaxSushiBarShares,
+    amount: MaxSushiBarShares - 1n,
   }));
 
   // "deploy" SushiBar contract, send NFT

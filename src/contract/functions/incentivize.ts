@@ -1,6 +1,7 @@
 import { NetworkProvider, SignatureTemplate, TransactionBuilder } from "cashscript";
 import { getContracts, padVmNumber, vmToBigInt, toCashScriptUtxo } from "../../utils";
 import { binToHex, TestNetWallet, TokenSendRequest } from "mainnet-js";
+import { MaxSushiBarShares } from "../const";
 
 export const incentivize = async ({
   amountSushi,
@@ -37,12 +38,12 @@ export const incentivize = async ({
     ...padVmNumber(newTotalShares, 8),
   ]));
 
-  const sushiContractUtxo = (await contracts.sushi.getUtxos())[0];
+  const sushiContractUtxo = (await contracts.sushi.getUtxos()).find(utxo => utxo.token!.amount === totalSushi);
   if (!sushiContractUtxo || !sushiContractUtxo.token?.amount) {
     throw new Error("No suitable UTXO found for Sushi contract");
   }
 
-  const xSushiContractUtxo = (await contracts.xSushi.getUtxos())[0];
+  const xSushiContractUtxo = (await contracts.xSushi.getUtxos()).find(utxo => utxo.token!.amount === MaxSushiBarShares - totalShares);
   if (!xSushiContractUtxo || !xSushiContractUtxo.token?.amount) {
     throw new Error("No suitable UTXO found for xSushi contract");
   }

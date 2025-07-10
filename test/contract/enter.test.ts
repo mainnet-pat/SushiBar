@@ -25,7 +25,7 @@ describe("Enter tests", () => {
 
     const { totalSushi, totalShares } = await sushiBar.getState();
 
-    expect(totalSushi).toBeGreaterThanOrEqual(101n);
-    expect(totalShares).toBeGreaterThanOrEqual(100n);
+    expect(totalSushi).toBe(101n);
+    expect(totalShares).toBe(101n);
   });
 });
