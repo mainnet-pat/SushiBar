@@ -1,12 +1,12 @@
-import { Contract, NetworkProvider } from "cashscript";
-import { Wallet, TestNetWallet } from "mainnet-js";
+import { Contract, NetworkProvider, Utxo } from "cashscript";
+import { TestNetWallet, Wallet } from "mainnet-js";
+import SushiArtifact from "../../artifacts/Sushi.artifact";
+import SushiBarArtifact from "../../artifacts/SushiBar.artifact";
+import xSushiArtifact from "../../artifacts/xSushi.artifact";
 import { getContracts, vmToBigInt } from "../utils";
 import { deploy } from "./functions/deploy";
 import { enter, leave } from "./functions/enterOrLeave";
-import { incentivize } from "./functions/incentivize";
-import SushiArtifact from "../../artifacts/Sushi.artifact";
-import xSushiArtifact from "../../artifacts/xSushi.artifact";
-import SushiBarArtifact from "../../artifacts/SushiBar.artifact";
+import { incentivizeOrMerge } from "./functions/incentivizeOrMerge";
 
 export class SushiBar {
   public sushiContract: Contract<typeof SushiArtifact>;
@@ -88,8 +88,29 @@ export class SushiBar {
     amountSushi: bigint;
     wallet: Wallet | TestNetWallet;
   }) {
-    return incentivize({
-      amountSushi,
+    return incentivizeOrMerge({
+      amount: amountSushi,
+      inputTokenCategory: this.sushiCategory,
+      mergeUtxo: undefined, // No merge UTXO for incentivize
+      wallet,
+      provider: this.sushiBarContract.provider,
+      sushiCategory: this.sushiCategory,
+      xSushiCategory: this.xSushiCategory,
+      sushiBarCategory: this.sushiBarCategory,
+    });
+  }
+
+  async merge({
+    utxo,
+    wallet,
+  }: {
+    utxo: Utxo; // The UTXO to merge with
+    wallet: Wallet | TestNetWallet;
+  }) {
+    return incentivizeOrMerge({
+      amount: utxo.token!.amount,
+      inputTokenCategory: utxo.token!.category,
+      mergeUtxo: utxo,
       wallet,
       provider: this.sushiBarContract.provider,
       sushiCategory: this.sushiCategory,
