@@ -4,3 +4,4 @@ export * from './contract/functions/enterOrLeave.js';
 export * from './contract/functions/incentivizeOrMerge.js';
 export * from './contract/SushiBar.js';
 export * from './contract/const.js';
+export * from './WalletConnectV2/index.js';
