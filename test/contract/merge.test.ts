@@ -1,3 +1,4 @@
+import { PrivKeyConnector } from "@bch-wc2/privkey-connector";
 import { MockNetworkProvider, randomUtxo, Utxo } from "cashscript";
 import { SushiBar } from "../../src";
 import { aliceAddress, MockWallet } from "../shared";
@@ -10,8 +11,10 @@ describe("Merge tests", () => {
 
     const wallet = await MockWallet(provider);
 
+        const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed });
+
     const sushiBar = await SushiBar.deploy({
-      wallet, provider,
+      wallet, provider, connector
     });
 
     expect((await sushiBar.sushiContract.getUtxos()).at(-1)).toMatchObject({
@@ -66,8 +69,10 @@ describe("Merge tests", () => {
 
     const wallet = await MockWallet(provider);
 
+        const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed });
+
     const sushiBar = await SushiBar.deploy({
-      wallet, provider,
+      wallet, provider, connector
     });
 
     expect((await sushiBar.xSushiContract.getUtxos()).at(-1)).toMatchObject({
@@ -122,8 +127,10 @@ describe("Merge tests", () => {
 
     const wallet = await MockWallet(provider);
 
+        const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed });
+
     const sushiBar = await SushiBar.deploy({
-      wallet, provider,
+      wallet, provider, connector
     });
 
     expect((await sushiBar.sushiContract.getUtxos()).at(-1)).toMatchObject({
@@ -178,8 +185,10 @@ describe("Merge tests", () => {
 
     const wallet = await MockWallet(provider);
 
+    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed });
+
     const sushiBar = await SushiBar.deploy({
-      wallet, provider,
+      wallet, provider, connector,
     });
 
     expect((await sushiBar.xSushiContract.getUtxos()).at(-1)).toMatchObject({

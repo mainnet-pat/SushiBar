@@ -1,6 +1,8 @@
-import { NetworkProvider, SignatureTemplate, TransactionBuilder, Utxo } from "cashscript";
-import { binToHex, TestNetWallet, TokenSendRequest, Wallet } from "mainnet-js";
+import { IConnector } from "@bch-wc2/interfaces";
+import { NetworkProvider, placeholderP2PKHUnlocker, TransactionBuilder, Utxo } from "cashscript";
+import { BaseWallet, binToHex, TokenSendRequest } from "mainnet-js";
 import { getContracts, padVmNumber, toCashScriptUtxo, vmToBigInt } from "../../utils.js";
+import { WCSigner } from "../../WcSigner.js";
 import { MaxSushiBarShares } from "../const.js";
 
 export const incentivizeOrMerge = async ({
@@ -9,6 +11,7 @@ export const incentivizeOrMerge = async ({
   mergeUtxo,
   wallet,
   provider,
+  connector,
   sushiCategory,
   xSushiCategory,
   sushiBarCategory,
@@ -16,12 +19,15 @@ export const incentivizeOrMerge = async ({
   amount: bigint,
   inputTokenCategory: string,
   mergeUtxo?: Utxo,
-  wallet: Wallet | TestNetWallet,
+  wallet: BaseWallet,
   provider: NetworkProvider,
+  connector: IConnector,
   sushiCategory: string,
   xSushiCategory: string,
   sushiBarCategory: string,
 }) => {
+  const signer = new WCSigner(wallet, connector);
+
   if (inputTokenCategory !== sushiCategory && inputTokenCategory !== xSushiCategory) {
     throw new Error(`Invalid input token category: ${inputTokenCategory}. Must be either Sushi or xSushi.`);
   }
@@ -71,7 +77,7 @@ export const incentivizeOrMerge = async ({
   if (mergeUtxo) {
     inputUtxo = mergeUtxo;
   } else {
-    const sushiDepositUtxoCandidates = await wallet.getUtxos();
+    const sushiDepositUtxoCandidates = await signer.wallet.getUtxos();
     const sushiDepositUtxos = sushiDepositUtxoCandidates
       .filter(utxo => utxo.token?.tokenId === sushiCategory && utxo.token.amount >= 0n);
     const sushiAvailable = sushiDepositUtxos
@@ -84,15 +90,15 @@ export const incentivizeOrMerge = async ({
     let sushiDepositUtxo = sushiDepositUtxos.find(utxo => utxo.token!.amount === amount);
     if (!sushiDepositUtxo) {
       // consolidate
-      await wallet.send(new TokenSendRequest({
-        cashaddr: wallet.cashaddr,
+      await signer.send(new TokenSendRequest({
+        cashaddr: signer.wallet.cashaddr,
         tokenId: sushiCategory,
         amount: amount,
       }), {
-        queryBalance: false,
+        userPrompt: "Sign the transaction to consolidate Sushi UTXOs",
       });
 
-      sushiDepositUtxo = (await wallet.getUtxos()).find(utxo => utxo.token?.tokenId === sushiCategory && utxo.token.amount === amount);
+      sushiDepositUtxo = (await signer.wallet.getUtxos()).find(utxo => utxo.token?.tokenId === sushiCategory && utxo.token.amount === amount);
 
       if (!sushiDepositUtxo) {
         throw new Error(`Failed to find a suitable Sushi UTXO after consolidation`);
@@ -102,18 +108,16 @@ export const incentivizeOrMerge = async ({
     inputUtxo = toCashScriptUtxo(sushiDepositUtxo);
   }
 
-  const fundingUtxos = (await wallet.getUtxos()).find(utxo => utxo.satoshis >= 5000 && !utxo.token);
+  const fundingUtxos = (await signer.wallet.getUtxos()).find(utxo => utxo.satoshis >= 5000 && !utxo.token);
   if (!fundingUtxos) {
     throw new Error("No suitable funding UTXO found for transaction fees");
   }
 
-  const signatureTemplate = new SignatureTemplate(wallet.privateKey);
-
   const builder = new TransactionBuilder({ provider })
     .addInput(sushiBarContractUtxo, contracts.sushiBar.unlock.incentivizeOrMerge(amount))
     .addInput(inputContractUtxo, inputContract.unlock.merge())
-    .addInput(inputUtxo, mergeUtxo ? inputContract.unlock.merge() : signatureTemplate.unlockP2PKH())
-    .addInput(toCashScriptUtxo(fundingUtxos), signatureTemplate.unlockP2PKH())
+    .addInput(inputUtxo, mergeUtxo ? inputContract.unlock.merge() : placeholderP2PKHUnlocker(signer.wallet.cashaddr))
+    .addInput(toCashScriptUtxo(fundingUtxos), placeholderP2PKHUnlocker(signer.wallet.cashaddr))
     .addOutput({to: contracts.sushiBar.tokenAddress, amount: 1000n, token: {
       ...sushiBarContractUtxo.token,
       nft: {
@@ -135,7 +139,7 @@ export const incentivizeOrMerge = async ({
     builder.outputs.reduce((sum, output) => sum + (output.amount ?? 0n), 0n);
 
   builder.addOutput({
-    to: wallet.cashaddr,
+    to: signer.wallet.cashaddr,
     amount: change - BigInt(txSize) - 100n, // BCH change
   });
 
@@ -146,7 +150,9 @@ export const incentivizeOrMerge = async ({
     console.debug(`Transaction size: ${txSize} bytes, change: ${change} satoshis, fee/byte ${Number(change) / txSize}`);
   }
 
-  await builder.send();
+  await signer.cashscriptSend(builder, {
+    userPrompt: `Sign the transaction to ${mergeUtxo ? "merge" : "incentivize"} SushiBar`,
+  });
 
   return amount;
 };

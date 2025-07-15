@@ -1,4 +1,5 @@
-import { MockNetworkProvider, NetworkProvider, randomToken, randomUtxo } from "cashscript";
+import { PrivKeyConnector } from "@bch-wc2/privkey-connector";
+import { MockNetworkProvider, randomToken, randomUtxo } from "cashscript";
 import { SushiBar } from "../src";
 import { aliceAddress, alicePriv, bobAddress, bobPriv, charlieAddress, charliePriv, daveAddress, davePriv, MockWallet } from "./shared";
 
@@ -13,9 +14,12 @@ describe("SushiBar", function () {
 
     const wallet = await MockWallet(provider, davePriv);
 
+    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed });
+
     sushiBar = await SushiBar.deploy({
       wallet,
       provider,
+      connector,
     });
 
     provider.addUtxo(aliceAddress, randomUtxo());

@@ -1,19 +1,23 @@
-import { NetworkProvider, SignatureTemplate, TransactionBuilder } from "cashscript";
-import { getContracts, padVmNumber, vmToBigInt, toCashScriptUtxo } from "../../utils.js";
-import { binToHex, TestNetWallet, TokenSendRequest, Wallet } from "mainnet-js";
+import { IConnector } from "@bch-wc2/interfaces";
+import { NetworkProvider, placeholderP2PKHUnlocker, TransactionBuilder } from "cashscript";
+import { BaseWallet, binToHex, TokenSendRequest } from "mainnet-js";
+import { getContracts, padVmNumber, toCashScriptUtxo, vmToBigInt } from "../../utils.js";
+import { WCSigner } from "../../WcSigner.js";
 import { MaxSushiBarShares } from "../const.js";
 
 export const enter = async ({
   amountSushi,
   wallet,
   provider,
+  connector,
   sushiCategory,
   xSushiCategory,
   sushiBarCategory,
 } : {
   amountSushi: bigint,
-  wallet: Wallet | TestNetWallet,
+  wallet: BaseWallet,
   provider: NetworkProvider,
+  connector: IConnector,
   sushiCategory: string,
   xSushiCategory: string,
   sushiBarCategory: string,
@@ -23,6 +27,7 @@ export const enter = async ({
     amount: amountSushi,
     wallet,
     provider,
+    connector,
     sushiCategory,
     xSushiCategory,
     sushiBarCategory,
@@ -33,13 +38,15 @@ export const leave = async ({
   amountXSushi,
   wallet,
   provider,
+  connector,
   sushiCategory,
   xSushiCategory,
   sushiBarCategory,
 } : {
   amountXSushi: bigint,
-  wallet: Wallet | TestNetWallet,
+  wallet: BaseWallet,
   provider: NetworkProvider,
+  connector: IConnector,
   sushiCategory: string,
   xSushiCategory: string,
   sushiBarCategory: string,
@@ -49,6 +56,7 @@ export const leave = async ({
     amount: amountXSushi,
     wallet,
     provider,
+    connector,
     sushiCategory,
     xSushiCategory,
     sushiBarCategory,
@@ -60,18 +68,22 @@ export const enterOrLeave = async ({
   amount,
   wallet,
   provider,
+  connector,
   sushiCategory,
   xSushiCategory,
   sushiBarCategory,
 } : {
   enter: boolean,
   amount: bigint,
-  wallet: Wallet | TestNetWallet,
+  wallet: BaseWallet,
   provider: NetworkProvider,
+  connector: IConnector,
   sushiCategory: string,
   xSushiCategory: string,
   sushiBarCategory: string,
 }) => {
+  const signer = new WCSigner(wallet, connector);
+
   const contracts = getContracts(sushiCategory, xSushiCategory, sushiBarCategory, provider);
 
   const sushiBarContractUtxo = (await contracts.sushiBar.getUtxos())[0];
@@ -125,7 +137,7 @@ export const enterOrLeave = async ({
     throw new Error("No suitable UTXO found for xSushi contract");
   }
 
-  const inputTokenUtxoCandidates = await wallet.getUtxos();
+  const inputTokenUtxoCandidates = await signer.wallet.getUtxos();
   const inputTokenUtxos = inputTokenUtxoCandidates
     .filter(utxo => utxo.token?.tokenId === inputTokenCategory && utxo.token.amount >= 0n);
   const tokenAvailable = inputTokenUtxos
@@ -142,34 +154,32 @@ export const enterOrLeave = async ({
   let inputTokenUtxo = inputTokenUtxos.find(utxo => utxo.token!.amount === amount);
   if (!inputTokenUtxo) {
     // consolidate
-    await wallet.send(new TokenSendRequest({
-      cashaddr: wallet.cashaddr,
+    await signer.send(new TokenSendRequest({
+      cashaddr: signer.wallet.cashaddr,
       tokenId: inputTokenCategory,
       amount: amount,
     }), {
-      queryBalance: false,
+      userPrompt: `Sign to consolidate ${enter ? `Sushi` : `xSushi`} UTXOs`,
     });
 
-    inputTokenUtxo = (await wallet.getUtxos()).find(utxo => utxo.token?.tokenId === inputTokenCategory && utxo.token.amount === amount);
+    inputTokenUtxo = (await signer.wallet.getUtxos()).find(utxo => utxo.token?.tokenId === inputTokenCategory && utxo.token.amount === amount);
 
     if (!inputTokenUtxo) {
       throw new Error(`Failed to find a suitable ${enter ? `Sushi` : `xSushi`} UTXO after consolidation`);
     }
   }
 
-  const fundingUtxo = (await wallet.getUtxos()).find(utxo => utxo.satoshis >= 5000 && !utxo.token);
+  const fundingUtxo = (await signer.wallet.getUtxos()).find(utxo => utxo.satoshis >= 5000 && !utxo.token);
   if (!fundingUtxo) {
     throw new Error("No suitable funding UTXO found for transaction fees");
-  }
-
-  const signatureTemplate = new SignatureTemplate(wallet.privateKey);
+  };
 
   const builder = new TransactionBuilder({ provider })
     .addInput(sushiBarContractUtxo, contracts.sushiBar.unlock.enterOrLeave(amount, enter))
     .addInput(sushiContractUtxo, contracts.sushi.unlock.spend())
     .addInput(xSushiContractUtxo, contracts.xSushi.unlock.spend())
-    .addInput(toCashScriptUtxo(inputTokenUtxo), signatureTemplate.unlockP2PKH())
-    .addInput(toCashScriptUtxo(fundingUtxo), signatureTemplate.unlockP2PKH())
+    .addInput(toCashScriptUtxo(inputTokenUtxo), placeholderP2PKHUnlocker(signer.wallet.cashaddr))
+    .addInput(toCashScriptUtxo(fundingUtxo), placeholderP2PKHUnlocker(signer.wallet.cashaddr))
     .addOutput({to: contracts.sushiBar.tokenAddress, amount: 1000n, token: {
       ...sushiBarContractUtxo.token,
       nft: {
@@ -194,7 +204,7 @@ export const enterOrLeave = async ({
       amount: 1000n,
     })
     .addOutput({
-      to: wallet.tokenaddr,
+      to: signer.wallet.tokenaddr,
       token: {
         category: outputTokenCategory,
         amount: what,
@@ -207,7 +217,7 @@ export const enterOrLeave = async ({
     builder.outputs.reduce((sum, output) => sum + (output.amount ?? 0n), 0n);
 
   builder.addOutput({
-    to: wallet.cashaddr,
+    to: signer.wallet.cashaddr,
     amount: change - BigInt(txSize) - 100n, // BCH change
   });
 
@@ -218,7 +228,9 @@ export const enterOrLeave = async ({
     console.debug(`Transaction size: ${txSize} bytes, change: ${change} satoshis, fee/byte ${Number(change) / txSize}`);
   }
 
-  await builder.send();
+  await signer.cashscriptSend(builder, {
+    userPrompt: `Sign to ${enter ? `enter` : `leave`} SushiBar`,
+  });
 
   return what;
 };

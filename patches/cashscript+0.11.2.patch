@@ -11,7 +11,7 @@ index 9fdeb86..4f0685f 100644
      reset(): void;
  }
 diff --git a/node_modules/cashscript/dist/network/MockNetworkProvider.js b/node_modules/cashscript/dist/network/MockNetworkProvider.js
-index eda3eff..0b20628 100644
+index eda3eff..6215834 100644
 --- a/node_modules/cashscript/dist/network/MockNetworkProvider.js
 +++ b/node_modules/cashscript/dist/network/MockNetworkProvider.js
 @@ -1,4 +1,4 @@
@@ -28,9 +28,13 @@ index eda3eff..0b20628 100644
          this.utxoMap = {};
          this.transactionMap = {};
          this.network = Network.MOCKNET;
-@@ -35,10 +36,46 @@ export default class MockNetworkProvider {
+@@ -34,11 +35,50 @@ export default class MockNetworkProvider {
+     async sendRawTransaction(txHex) {
          const transactionBin = hexToBin(txHex);
          const txid = binToHex(sha256(sha256(transactionBin)).reverse());
++        if (this.transactionMap[txid]) {
++            throw new Error(`Transaction with txid ${txid} was already submitted: txn-mempool-conflict`);
++        }
          this.transactionMap[txid] = txHex;
 +        const decoded = decodeTransaction(transactionBin);
 +        if (typeof decoded === 'string') {

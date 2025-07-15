@@ -1,5 +1,6 @@
+import { IConnector } from "@bch-wc2/interfaces";
 import { Contract, NetworkProvider, Utxo } from "cashscript";
-import { TestNetWallet, Wallet } from "mainnet-js";
+import { BaseWallet } from "mainnet-js";
 import SushiArtifact from "../../artifacts/Sushi.artifact";
 import SushiBarArtifact from "../../artifacts/SushiBar.artifact";
 import xSushiArtifact from "../../artifacts/xSushi.artifact";
@@ -9,6 +10,8 @@ import { enter, leave } from "./functions/enterOrLeave";
 import { incentivizeOrMerge } from "./functions/incentivizeOrMerge";
 
 export class SushiBar {
+  public connector: IConnector;
+
   public sushiContract: Contract<typeof SushiArtifact>;
   public xSushiContract: Contract<typeof xSushiArtifact>;
   public sushiBarContract: Contract<typeof SushiBarArtifact>;
@@ -21,21 +24,26 @@ export class SushiBar {
     sushiCategory,
     wallet,
     provider,
+    connector,
   }: {
     sushiCategory?: string;
-    wallet: Wallet | TestNetWallet;
+    wallet: BaseWallet;
     provider: NetworkProvider;
+    connector: IConnector;
   }) {
     const result = await deploy({
       provider: provider,
       wallet: wallet,
       sushiCategory: sushiCategory,
-    })
+      connector: connector,
+    });
 
-    return new SushiBar(result.sushiCategory, result.xSushiCategory, result.sushiBarCategory, provider);
+    return new SushiBar(result.sushiCategory, result.xSushiCategory, result.sushiBarCategory, provider, connector);
   }
 
-  constructor(sushiCategory: string, xSushiCategory: string, sushiBarCategory: string, provider: NetworkProvider) {
+  constructor(sushiCategory: string, xSushiCategory: string, sushiBarCategory: string, provider: NetworkProvider, connector: IConnector) {
+    this.connector = connector;
+
     const contracts = getContracts(sushiCategory, xSushiCategory, sushiBarCategory, provider);
 
     this.sushiContract = contracts.sushi;
@@ -52,12 +60,13 @@ export class SushiBar {
     wallet,
   }: {
     amountSushi: bigint;
-    wallet: Wallet | TestNetWallet;
+    wallet: BaseWallet;
   }) {
     return enter({
       amountSushi,
       wallet,
       provider: this.sushiBarContract.provider,
+      connector: this.connector,
       sushiCategory: this.sushiCategory,
       xSushiCategory: this.xSushiCategory,
       sushiBarCategory: this.sushiBarCategory,
@@ -69,12 +78,13 @@ export class SushiBar {
     wallet,
   }: {
     amountXSushi: bigint;
-    wallet: Wallet | TestNetWallet;
+    wallet: BaseWallet;
   }) {
     return leave({
       amountXSushi,
       wallet,
       provider: this.sushiBarContract.provider,
+      connector: this.connector,
       sushiCategory: this.sushiCategory,
       xSushiCategory: this.xSushiCategory,
       sushiBarCategory: this.sushiBarCategory,
@@ -86,7 +96,7 @@ export class SushiBar {
     wallet,
   }: {
     amountSushi: bigint;
-    wallet: Wallet | TestNetWallet;
+    wallet: BaseWallet;
   }) {
     return incentivizeOrMerge({
       amount: amountSushi,
@@ -94,6 +104,7 @@ export class SushiBar {
       mergeUtxo: undefined, // No merge UTXO for incentivize
       wallet,
       provider: this.sushiBarContract.provider,
+      connector: this.connector,
       sushiCategory: this.sushiCategory,
       xSushiCategory: this.xSushiCategory,
       sushiBarCategory: this.sushiBarCategory,
@@ -105,7 +116,7 @@ export class SushiBar {
     wallet,
   }: {
     utxo: Utxo; // The UTXO to merge with
-    wallet: Wallet | TestNetWallet;
+    wallet: BaseWallet;
   }) {
     return incentivizeOrMerge({
       amount: utxo.token!.amount,
@@ -113,6 +124,7 @@ export class SushiBar {
       mergeUtxo: utxo,
       wallet,
       provider: this.sushiBarContract.provider,
+      connector: this.connector,
       sushiCategory: this.sushiCategory,
       xSushiCategory: this.xSushiCategory,
       sushiBarCategory: this.sushiBarCategory,

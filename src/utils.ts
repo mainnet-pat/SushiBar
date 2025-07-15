@@ -1,9 +1,9 @@
 import { bigIntToVmNumber, CashAddressNetworkPrefix, cashAddressToLockingBytecode, CashAddressType, decodeCashAddress, encodeCashAddress, hexToBin, padMinimallyEncodedVmNumber, vmNumberToBigInt } from "@bitauth/libauth";
 import { Contract, NetworkProvider, TokenDetails, Utxo } from "cashscript";
+import { UtxoI } from "mainnet-js";
 import SushiArtifact from "../artifacts/Sushi.artifact";
 import SushiBarArtifact from "../artifacts/SushiBar.artifact";
 import xSushiArtifact from "../artifacts/xSushi.artifact";
-import { UtxoI } from "mainnet-js";
 
 export const min = (...args: bigint[]) => args.reduce((m, e) => e < m ? e : m);
 export const require = (predicate: boolean, message: string) => {

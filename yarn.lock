@@ -268,6 +268,23 @@
     "@babel/helper-string-parser" "^7.27.1"
     "@babel/helper-validator-identifier" "^7.27.1"
 
+"@bch-wc2/interfaces@^0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@bch-wc2/interfaces/-/interfaces-0.0.4.tgz#702714e31aa55710bb9b8c64c18dc60a9e89045c"
+  integrity sha512-ROQjPxRBAYPvy7z0qiATWjI7Jwf4Zhag1/r68i9PJ5Wp0Uaq75krh0a5/UF+bnJ+AUm0aKwNR4zT5D7a1mZkzA==
+
+"@bch-wc2/interfaces@^0.0.5":
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/@bch-wc2/interfaces/-/interfaces-0.0.5.tgz#7f08bad333841fc3e8176ef8f70c465310ed5a4f"
+  integrity sha512-gdVGJgOdqkV8pnaye9L53Du9k6u9slNSc8a3G0LH/rT5YTXZjVamHgwQujQ6MklPtijvTFqcBMabfdnrYKIs6w==
+
+"@bch-wc2/privkey-connector@^0.0.5":
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/@bch-wc2/privkey-connector/-/privkey-connector-0.0.5.tgz#71b3066870348ac7e56c96b623919ba2bc478969"
+  integrity sha512-dnWQ+2gkrsrjf24vyOmXCLvFk6TKOqS22qDurH3+Y4j05xznywptCRfsQQOpfd+32mBAUx2jBBKG5JZH/WMBmQ==
+  dependencies:
+    "@bch-wc2/interfaces" "^0.0.5"
+
 "@bcoe/v8-coverage@^0.2.3":
   version "0.2.3"
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
@@ -278,10 +295,10 @@
   resolved "https://registry.yarnpkg.com/@bitauth/libauth/-/libauth-3.1.0-next.7.tgz#efcca8d6ad8b33d7a7b600c42ea26f2edd251a00"
   integrity sha512-lJ+ZwDr5zIyO44XbHphdp/eEmIbd1D8gD6zbN8P2HLDDGSAE9rqUwXInWFGwaPKVR8cUbKK/MKSzbPCK+4hxDw==
 
-"@cashscript/utils@^0.11.1":
-  version "0.11.1"
-  resolved "https://registry.yarnpkg.com/@cashscript/utils/-/utils-0.11.1.tgz#147e2206cb3ad40f27388b54d3851598fad7049b"
-  integrity sha512-2K027Vr/pj4hiwmZQbBzzgcTsXNg4cRXIEsXgg8MDlTRjVDCdS7239ahPYkQc1/HwPCuzU5R87WjOwP/SUgchg==
+"@cashscript/utils@^0.11.2":
+  version "0.11.2"
+  resolved "https://registry.yarnpkg.com/@cashscript/utils/-/utils-0.11.2.tgz#4b701db09efeaee8a46e2e9905a443e5dd4e3f8e"
+  integrity sha512-/H5Fvg8L6sRCs1v1XwyA1rYqgZXlojmK1Qr7Co5Wn3WDPv+Z6oKkvi9m283dOAO7U0D8HILJW1yF3fr1n4BsEw==
   dependencies:
     "@bitauth/libauth" "^3.1.0-next.2"
 
@@ -291,6 +308,18 @@
   integrity sha512-GU/CvRR9lZ0d8gy9CXGW7f//OHCIydBavv9q+JcxjGj8Xr7HwlGqHx+Wzhx9y3YmJrXfExpgClcd++gTjdEmzA==
   dependencies:
     debug "^4.3.7"
+
+"@electrum-cash/network@4.1.1-development.10647307155":
+  version "4.1.1-development.10647307155"
+  resolved "https://registry.yarnpkg.com/@electrum-cash/network/-/network-4.1.1-development.10647307155.tgz#d41d61db58814354f86fa3fb4aa718b5577ade36"
+  integrity sha512-IGvB1lHgY0ozgt2dvWD19Mx0aNrDd+wGh4WvQVDd1ax/GXLFhd7XmLxhHgXNAEm0IpwCTJD5mkiEBNdkvngYcQ==
+  dependencies:
+    "@electrum-cash/debug-logs" "^1.0.0"
+    "@electrum-cash/web-socket" "^1.0.0"
+    async-mutex "^0.5.0"
+    debug "^4.3.2"
+    eventemitter3 "^5.0.1"
+    lossless-json "^4.0.1"
 
 "@electrum-cash/network@^4.1.1":
   version "4.1.1"
@@ -1046,24 +1075,24 @@ caniuse-lite@^1.0.30001726:
   resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001726.tgz#a15bd87d5a4bf01f6b6f70ae7c97fdfd28b5ae47"
   integrity sha512-VQAUIUzBiZ/UnlM28fSp2CRF3ivUn1BWEvxMcVTNwpw91Py1pGbPIyIKtd+tzct9C3ouceCVdGAXxZOpZAsgdw==
 
-cashc@^0.11.1:
-  version "0.11.1"
-  resolved "https://registry.yarnpkg.com/cashc/-/cashc-0.11.1.tgz#ea3de3e05efff2264e2fdafbc4eb985edbd08c53"
-  integrity sha512-AI15dR4tU/8kySdB/IhC6dm81/nUcnGKlVJrzEKrvI5f1WoETfuiny30WyBxaZvn0l2TCkCwSscuE3deh4mF+g==
+cashc@^0.11.2:
+  version "0.11.2"
+  resolved "https://registry.yarnpkg.com/cashc/-/cashc-0.11.2.tgz#62ac254782cb808adb8fa6814f71f341c8ba49eb"
+  integrity sha512-5pUka/cI3l744J99Am7tQN6AbSnFOfDxcYqX8hXY9VsqEefJK7lrTyvE3FKL8RC7mixh6qwbxnY4tVYoWoh74w==
   dependencies:
     "@bitauth/libauth" "^3.1.0-next.2"
-    "@cashscript/utils" "^0.11.1"
+    "@cashscript/utils" "^0.11.2"
     antlr4 "^4.13.2"
     commander "^13.1.0"
     semver "^7.6.3"
 
-cashscript@^0.11.1:
-  version "0.11.1"
-  resolved "https://registry.yarnpkg.com/cashscript/-/cashscript-0.11.1.tgz#5b5004556df152b7dc0448c5e8151ac7250c30aa"
-  integrity sha512-qk9Rb2NsPQ6frMjG7qGQssRvTkGiSm2xF4tKDXYSEiZdO2ENoUSbBu5MgHSix7esIUHi0EpBmjpaljI1fvgyJg==
+cashscript@^0.11.2:
+  version "0.11.2"
+  resolved "https://registry.yarnpkg.com/cashscript/-/cashscript-0.11.2.tgz#69949158d76d8ee4156f14d10bdca0c54d30f9ca"
+  integrity sha512-Ab+V8+PyktENKWXK4vRcf/wdmiEHSAg1wNJrilRFB2DYuJDfSyL3ZcstzfQZEg0+0P2ZmCT0RE4jUAjia2rAQw==
   dependencies:
     "@bitauth/libauth" "^3.1.0-next.2"
-    "@cashscript/utils" "^0.11.1"
+    "@cashscript/utils" "^0.11.2"
     "@electrum-cash/network" "^4.1.1"
     "@mr-zwets/bchn-api-wrapper" "^1.0.1"
     delay "^6.0.0"
@@ -2104,13 +2133,14 @@ lru-cache@^5.1.1:
   dependencies:
     yallist "^3.0.2"
 
-mainnet-js@^2.7.5:
-  version "2.7.5"
-  resolved "https://registry.yarnpkg.com/mainnet-js/-/mainnet-js-2.7.5.tgz#79e8423871bc6a526474d21b04c6095753773721"
-  integrity sha512-gCOecK1wCSbs5pCYu/v0jtbRC+4Qh7T+lFrggTBMyMY+rzzcTqANP6R4/UjE5jH/YBV1twb0g5M8nFX5EVdttg==
+mainnet-js@^2.7.8:
+  version "2.7.8"
+  resolved "https://registry.yarnpkg.com/mainnet-js/-/mainnet-js-2.7.8.tgz#315c6bc76b3ba982bc670bdce081275db1c254fa"
+  integrity sha512-iWf5v+r/CKgOoasWoWBJUPQMQQ5foIoG1SvmjNqTXb+pvvrAgpn7gryMI96Qpt3R2/Q/4tPvfpVl0kKLIzMehg==
   dependencies:
+    "@bch-wc2/interfaces" "^0.0.4"
     "@bitauth/libauth" "^3.1.0-next.2"
-    "@electrum-cash/network" "^4.1.1"
+    "@electrum-cash/network" "4.1.1-development.10647307155"
     "@scure/bip39" "^1.2.2"
     buffer "^6.0.3"
   optionalDependencies:
