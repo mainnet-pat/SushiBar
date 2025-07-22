@@ -26,11 +26,11 @@
   },
   "dependencies": {
     "cashscript": "^0.11.2",
-    "mainnet-js": "^2.7.9"
+    "mainnet-js": "^2.7.10"
   },
   "optionalDependencies": {},
   "devDependencies": {
-    "@bch-wc2/privkey-connector": "^0.0.6",
+    "@bch-wc2/privkey-connector": "^0.0.7",
     "@jest/globals": "^29.7.0",
     "@types/jest": "^29.5.14",
     "cashc": "^0.11.2",
