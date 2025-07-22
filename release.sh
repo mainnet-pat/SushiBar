@@ -1,6 +1,7 @@
 #!/bin/bash
 set -x
 
+reponame="SushiBar"
 branch_name="$1"
 
 if [ -z "$branch_name" ]; then
@@ -26,4 +27,4 @@ git push origin tag "$branch_name"
 git checkout master
 
 echo "Release branch $branch_name created and pushed successfully."
-echo "yarn add olando@https://github.com/mainnet-pat/olando.git#$branch_name"
+echo "yarn add $reponame@https://github.com/mainnet-pat/$reponame.git#$branch_name"
