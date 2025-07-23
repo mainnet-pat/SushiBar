@@ -4,8 +4,8 @@ import { BaseWallet, binToHex, hexToBin, TokenSendRequest, UtxoI } from "mainnet
 import SushiArtifact from "../../../artifacts/Sushi.artifact.js";
 import SushiBarArtifact from "../../../artifacts/SushiBar.artifact.js";
 import xSushiArtifact from "../../../artifacts/xSushi.artifact.js";
-import { padVmNumber } from "../../utils";
-import { WCSigner } from "../../WcSigner";
+import { padVmNumber } from "../../utils.js";
+import { WCSigner } from "../../WcSigner.js";
 import { MaxSushiBarShares } from "../const.js";
 
 export const consolidateUtxos = async ({

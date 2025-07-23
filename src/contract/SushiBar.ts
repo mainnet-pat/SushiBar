@@ -1,13 +1,13 @@
 import { IConnector } from "@bch-wc2/interfaces";
 import { Contract, NetworkProvider, Utxo } from "cashscript";
 import { BaseWallet } from "mainnet-js";
-import SushiArtifact from "../../artifacts/Sushi.artifact";
-import SushiBarArtifact from "../../artifacts/SushiBar.artifact";
-import xSushiArtifact from "../../artifacts/xSushi.artifact";
-import { getContracts, vmToBigInt } from "../utils";
-import { deploy } from "./functions/deploy";
-import { enter, leave } from "./functions/enterOrLeave";
-import { incentivizeOrMerge } from "./functions/incentivizeOrMerge";
+import SushiArtifact from "../../artifacts/Sushi.artifact.js";
+import SushiBarArtifact from "../../artifacts/SushiBar.artifact.js";
+import xSushiArtifact from "../../artifacts/xSushi.artifact.js";
+import { getContracts, vmToBigInt } from "../utils.js";
+import { deploy } from "./functions/deploy.js";
+import { enter, leave } from "./functions/enterOrLeave.js";
+import { incentivizeOrMerge } from "./functions/incentivizeOrMerge.js";
 
 export class SushiBar {
   public connector: IConnector;
