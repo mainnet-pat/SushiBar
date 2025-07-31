@@ -2,7 +2,7 @@ import { IConnector } from "@bch-wc2/interfaces";
 import { NetworkProvider, placeholderP2PKHUnlocker, TransactionBuilder } from "cashscript";
 import { BaseWallet, binToHex, TokenSendRequest } from "mainnet-js";
 import { getContracts, padVmNumber, toCashScriptUtxo, vmToBigInt } from "../../utils.js";
-import { WCSigner } from "../../WcSigner.js";
+import { Signer } from "../../Signer.js";
 import { MaxSushiBarShares } from "../const.js";
 
 export const enter = async ({
@@ -82,7 +82,7 @@ export const enterOrLeave = async ({
   xSushiCategory: string,
   sushiBarCategory: string,
 }) => {
-  const signer = new WCSigner(wallet, connector);
+  const signer = new Signer(wallet, connector);
 
   const contracts = getContracts(sushiCategory, xSushiCategory, sushiBarCategory, provider);
 
@@ -105,6 +105,10 @@ export const enterOrLeave = async ({
 
     what = totalShares > 0n ? amount * totalShares / totalSushi : amount;
 
+    if (totalShares <= 1) {
+      what = amount; // if this is the first deposit, we just release the same amount of xSushi as Sushi
+    }
+
     const newTotalSushi = totalSushi + amount;
     const newTotalShares = totalShares + what;
 
@@ -112,6 +116,7 @@ export const enterOrLeave = async ({
       ...padVmNumber(newTotalSushi, 8),
       ...padVmNumber(newTotalShares, 8),
     ]));
+    console.log(newCommitment);
   } else {
     inputTokenCategory = xSushiCategory;
     outputTokenCategory = sushiCategory;
@@ -125,6 +130,10 @@ export const enterOrLeave = async ({
       ...padVmNumber(newTotalSushi, 8),
       ...padVmNumber(newTotalShares, 8),
     ]));
+  }
+
+  if (what === 0n) {
+    throw new Error(`Input amount is too small to ${enter ? `enter` : `leave`} SushiBar`);
   }
 
   const sushiContractUtxo = (await contracts.sushi.getUtxos()).find(utxo => utxo.token!.amount === totalSushi);
@@ -218,7 +227,7 @@ export const enterOrLeave = async ({
 
   builder.addOutput({
     to: signer.wallet.cashaddr,
-    amount: change - BigInt(txSize) - 100n, // BCH change
+    amount: change - BigInt(txSize) - 250n, // BCH change
   });
 
   {
@@ -226,6 +235,7 @@ export const enterOrLeave = async ({
     const change = builder.inputs.reduce((sum, input) => sum + input.satoshis, 0n) -
       builder.outputs.reduce((sum, output) => sum + (output.amount ?? 0n), 0n);
     console.debug(`Transaction size: ${txSize} bytes, change: ${change} satoshis, fee/byte ${Number(change) / txSize}`);
+    console.log(builder.build())
   }
 
   await signer.cashscriptSend(builder, {

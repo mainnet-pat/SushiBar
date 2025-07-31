@@ -2,7 +2,7 @@ import { IConnector } from "@bch-wc2/interfaces";
 import { NetworkProvider, placeholderP2PKHUnlocker, TransactionBuilder, Utxo } from "cashscript";
 import { BaseWallet, binToHex, TokenSendRequest } from "mainnet-js";
 import { getContracts, padVmNumber, toCashScriptUtxo, vmToBigInt } from "../../utils.js";
-import { WCSigner } from "../../WcSigner.js";
+import { Signer } from "../../Signer.js";
 import { MaxSushiBarShares } from "../const.js";
 
 export const incentivizeOrMerge = async ({
@@ -26,7 +26,7 @@ export const incentivizeOrMerge = async ({
   xSushiCategory: string,
   sushiBarCategory: string,
 }) => {
-  const signer = new WCSigner(wallet, connector);
+  const signer = new Signer(wallet, connector);
 
   if (inputTokenCategory !== sushiCategory && inputTokenCategory !== xSushiCategory) {
     throw new Error(`Invalid input token category: ${inputTokenCategory}. Must be either Sushi or xSushi.`);
@@ -140,7 +140,7 @@ export const incentivizeOrMerge = async ({
 
   builder.addOutput({
     to: signer.wallet.cashaddr,
-    amount: change - BigInt(txSize) - 100n, // BCH change
+    amount: change - BigInt(txSize) - 250n, // BCH change
   });
 
   {

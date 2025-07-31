@@ -1,106 +1,143 @@
 import { IConnector } from "@bch-wc2/interfaces";
 import { Contract, NetworkProvider } from "cashscript";
-import { BaseWallet, binToHex, hexToBin, TokenSendRequest, UtxoI } from "mainnet-js";
+import { BaseWallet, binToHex, hexToBin, Registry, TokenSendRequest } from "mainnet-js";
 import SushiArtifact from "../../../artifacts/Sushi.artifact.js";
 import SushiBarArtifact from "../../../artifacts/SushiBar.artifact.js";
 import xSushiArtifact from "../../../artifacts/xSushi.artifact.js";
-import { padVmNumber } from "../../utils.js";
-import { WCSigner } from "../../WcSigner.js";
+import { getTokenGenesisUtxo, padVmNumber } from "../../utils.js";
+import { Signer } from "../../Signer.js";
 import { MaxSushiBarShares } from "../const.js";
-
-export const consolidateUtxos = async ({
-  signer,
-} : {
-  signer: WCSigner,
-}) => {
-  const utxos = await signer.wallet.getUtxos();
-
-  if (utxos.length === 0) {
-    throw new Error("No UTXOs available to consolidate.");
-  }
-
-  return await signer.send({
-    cashaddr: signer.wallet.cashaddr,
-    value: 2000,
-    unit: "sat",
-  }, {
-    userPrompt: "Sign to consolidate UTXOs",
-  });
-}
-
-export const getTokenGenesisUtxo = async ({
-  signer,
-} : {
-  signer: WCSigner,
-}): Promise<UtxoI> => {
-  const utxos = await signer.wallet.getUtxos();
-
-  const genesisUtxo = utxos.find(utxo => !utxo.token && utxo.vout === 0 && utxo.satoshis >= 2000);
-
-  if (!genesisUtxo) {
-    await consolidateUtxos({ signer });
-    return getTokenGenesisUtxo({ signer });
-  }
-
-  return genesisUtxo;
-};
 
 export const deploy = async ({
   sushiCategory,
   wallet,
   provider,
   connector,
+  bcmrs,
 } : {
   sushiCategory?: string,
   wallet: BaseWallet,
   provider: NetworkProvider,
   connector: IConnector,
+  bcmrs?: {
+    sushiBcmr?: Registry,
+    xSushiBcmr?: Registry,
+    sushiBarBcmr?: Registry,
+  },
 }) => {
-  const signer = new WCSigner(wallet, connector);
+  const signer = new Signer(wallet, connector);
 
   if (!sushiCategory) {
-    const genesisUtxo = await getTokenGenesisUtxo({ signer });
-    const response = await signer.tokenGenesis({
-      amount: MaxSushiBarShares,
-    }, [], {
-      ensureUtxos: [genesisUtxo],
-      queryBalance: false,
-      userPrompt: "Sign to create Sushi token",
-    });
+    if (!bcmrs?.sushiBcmr) {
+      const genesisUtxo = await getTokenGenesisUtxo({ signer });
+      const response = await signer.tokenGenesis({
+        amount: MaxSushiBarShares,
+      }, [], {
+        ensureUtxos: [genesisUtxo],
+        queryBalance: false,
+        userPrompt: "Sign to create Sushi token",
+      });
 
-    sushiCategory = response.tokenIds![0]!;
+      sushiCategory = response.tokenIds![0]!;
+    } else {
+      try {
+        const { tokenGenesisWithBcmrPinToIpfs } = await import("../../ipfsUtils.js");
+
+        const response = await tokenGenesisWithBcmrPinToIpfs({
+          signer,
+          genesisRequest: {
+            amount: MaxSushiBarShares,
+          },
+          bcmr: bcmrs.sushiBcmr,
+          userPrompt: "Sign to create Sushi token",
+        });
+
+        sushiCategory = response.tokenIds![0]!;
+      } catch (error: any) {
+        throw new Error("Token genesis utils are not available: " + error.message);
+      }
+    }
+  } else {
+    // check if signer has the sushi token
+    const sushiAmount = await signer.wallet.getTokenBalance(sushiCategory);
+    if (!sushiAmount) {
+      throw new Error(`No sushi tokens found in signer's wallet for category: ${sushiCategory}`);
+    }
   }
 
   let xSushiCategory: string;
   {
-    const genesisUtxo = await getTokenGenesisUtxo({ signer });
-    const response = await signer.tokenGenesis({
-      amount: MaxSushiBarShares - 1n,
-    }, [], {
-      ensureUtxos: [genesisUtxo],
-      queryBalance: false,
-      userPrompt: "Sign to create xSushi token",
-    });
+    if (!bcmrs?.xSushiBcmr) {
+      const genesisUtxo = await getTokenGenesisUtxo({ signer });
+      const response = await signer.tokenGenesis({
+        amount: MaxSushiBarShares - 1n,
+      }, [], {
+        ensureUtxos: [genesisUtxo],
+        queryBalance: false,
+        userPrompt: "Sign to create xSushi token",
+      });
 
-    xSushiCategory = response.tokenIds![0]!;
+      xSushiCategory = response.tokenIds![0]!;
+    } else {
+      try {
+        const { tokenGenesisWithBcmrPinToIpfs } = await import("../../ipfsUtils.js");
+
+        const response = await tokenGenesisWithBcmrPinToIpfs({
+          signer,
+          genesisRequest: {
+            amount: MaxSushiBarShares - 1n,
+          },
+          bcmr: bcmrs.xSushiBcmr,
+          userPrompt: "Sign to create xSushi token",
+        });
+
+        xSushiCategory = response.tokenIds![0]!;
+      } catch (error: any) {
+        throw new Error("Token genesis utils are not available: " + error.message);
+      }
+    }
   }
 
   let sushiBarCategory: string;
   {
-    const genesisUtxo = await getTokenGenesisUtxo({ signer });
-    const response = await signer.tokenGenesis({
-      capability: "mutable",
-      commitment: binToHex(Uint8Array.from([
-        ...padVmNumber(BigInt(1), 8),
-        ...padVmNumber(BigInt(1), 8),
-      ]))
-    }, [], {
-      ensureUtxos: [genesisUtxo],
-      queryBalance: false,
-      userPrompt: "Sign to create SushiBar token",
-    });
+    if (!bcmrs?.sushiBarBcmr) {
+      const genesisUtxo = await getTokenGenesisUtxo({ signer });
+      const response = await signer.tokenGenesis({
+        capability: "mutable",
+        commitment: binToHex(Uint8Array.from([
+          ...padVmNumber(BigInt(1), 8),
+          ...padVmNumber(BigInt(1), 8),
+        ]))
+      }, [], {
+        ensureUtxos: [genesisUtxo],
+        queryBalance: false,
+        userPrompt: "Sign to create SushiBar token",
+      });
 
-    sushiBarCategory = response.tokenIds![0]!;
+      sushiBarCategory = response.tokenIds![0]!;
+    } else {
+      try {
+        const { tokenGenesisWithBcmrPinToIpfs } = await import("../../ipfsUtils.js");
+
+
+        const response = await tokenGenesisWithBcmrPinToIpfs({
+          signer,
+          genesisRequest: {
+            capability: "mutable",
+            commitment: binToHex(Uint8Array.from([
+              ...padVmNumber(BigInt(1), 8),
+              ...padVmNumber(BigInt(1), 8),
+            ]))
+          },
+          bcmr: bcmrs.sushiBarBcmr,
+          userPrompt: "Sign to create SushiBar token",
+        });
+
+        sushiBarCategory = response.tokenIds![0]!;
+      } catch (error: any) {
+        throw new Error("Token genesis utils are not available: " + error.message);
+      }
+    }
   }
 
   const sushiContract = new Contract(SushiArtifact, [hexToBin(sushiCategory).reverse(), hexToBin(sushiBarCategory).reverse()], { provider, addressType: "p2sh20" });

@@ -4,6 +4,7 @@ import { UtxoI } from "mainnet-js";
 import SushiArtifact from "../artifacts/Sushi.artifact.js";
 import SushiBarArtifact from "../artifacts/SushiBar.artifact.js";
 import xSushiArtifact from "../artifacts/xSushi.artifact.js";
+import { Signer } from "./Signer.js";
 
 export const min = (...args: bigint[]) => args.reduce((m, e) => e < m ? e : m);
 export const require = (predicate: boolean, message: string) => {
@@ -90,3 +91,44 @@ export const toCashScriptUtxo = (utxo: UtxoI) =>
         } as TokenDetails)
       : undefined,
   } as Utxo);
+
+export const consolidateUtxos = async ({
+  signer,
+  minSatoshis,
+} : {
+  signer: Signer,
+  minSatoshis?: number,
+}) => {
+  if (!minSatoshis) {
+    return signer.sendMax(signer.wallet.cashaddr, {
+      userPrompt: "Sign to consolidate UTXOs",
+      queryBalance: false,
+    });
+  };
+
+  return signer.send({
+    cashaddr: signer.wallet.cashaddr,
+    value: minSatoshis,
+    unit: "sat",
+  }, {
+    userPrompt: "Sign to consolidate UTXOs",
+    queryBalance: false,
+  });
+}
+
+export const getTokenGenesisUtxo = async ({
+  signer,
+} : {
+  signer: Signer,
+}): Promise<UtxoI> => {
+  const utxos = await signer.wallet.getUtxos();
+
+  const genesisUtxo = utxos.find(utxo => !utxo.token && utxo.vout === 0 && utxo.satoshis >= 2000);
+
+  if (!genesisUtxo) {
+    await consolidateUtxos({ signer, minSatoshis: 2000 });
+    return getTokenGenesisUtxo({ signer });
+  }
+
+  return genesisUtxo;
+};

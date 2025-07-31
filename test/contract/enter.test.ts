@@ -11,7 +11,7 @@ describe("Enter tests", () => {
 
     const wallet = await MockWallet(provider);
 
-    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed });
+    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed, networkProvider: provider });
 
     const sushiBar = await SushiBar.deploy({
       wallet, provider, connector

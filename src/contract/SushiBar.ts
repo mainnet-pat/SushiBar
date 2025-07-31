@@ -1,6 +1,6 @@
 import { IConnector } from "@bch-wc2/interfaces";
 import { Contract, NetworkProvider, Utxo } from "cashscript";
-import { BaseWallet } from "mainnet-js";
+import { BaseWallet, Registry } from "mainnet-js";
 import SushiArtifact from "../../artifacts/Sushi.artifact.js";
 import SushiBarArtifact from "../../artifacts/SushiBar.artifact.js";
 import xSushiArtifact from "../../artifacts/xSushi.artifact.js";
@@ -25,17 +25,24 @@ export class SushiBar {
     wallet,
     provider,
     connector,
+    bcmrs,
   }: {
     sushiCategory?: string;
     wallet: BaseWallet;
     provider: NetworkProvider;
     connector: IConnector;
+    bcmrs?: {
+      sushiBcmr?: Registry,
+      xSushiBcmr?: Registry,
+      sushiBarBcmr?: Registry,
+    },
   }) {
     const result = await deploy({
       provider: provider,
       wallet: wallet,
       sushiCategory: sushiCategory,
       connector: connector,
+      bcmrs: bcmrs,
     });
 
     return new SushiBar(result.sushiCategory, result.xSushiCategory, result.sushiBarCategory, provider, connector);

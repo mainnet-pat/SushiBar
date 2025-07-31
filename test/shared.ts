@@ -51,6 +51,10 @@ export const MockWalletMethods = (wallet: BaseWallet, provider: NetworkProvider)
     }));
   };
 
+  wallet.getUtxos = async (): Promise<UtxoI[]> => {
+    return wallet.getAddressUtxos(wallet.cashaddr);
+  };
+
   wallet.submitTransaction = async (transaction: Uint8Array, awaitPropagation?: boolean | undefined): Promise<string> => {
     const txid = await provider.sendRawTransaction(binToHex(transaction));
     return txid;

@@ -14,7 +14,7 @@ describe("SushiBar", function () {
 
     const wallet = await MockWallet(provider, davePriv);
 
-    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed });
+    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed, networkProvider: provider });
 
     sushiBar = await SushiBar.deploy({
       wallet,

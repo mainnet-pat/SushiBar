@@ -89,6 +89,7 @@ contract SushiBar(bytes32 sushiBarCategory, bytes32 sushiCategory, bytes32 xSush
 
       // Calculate and release the amount of xSushi the Sushi is worth. The ratio will change overtime, as xSushi is returned/released and Sushi deposited + gained from fees / withdrawn.
       int what = amount * totalShares / totalSushi;
+      require(what > 0, "Input amount is too small to enter SushiBar");
       if (totalShares <= 1) {
         what = amount; // if this is the first deposit, we just release the same amount of xSushi as Sushi
       }
@@ -111,6 +112,7 @@ contract SushiBar(bytes32 sushiBarCategory, bytes32 sushiCategory, bytes32 xSush
 
       // Calculate the amount of Sushi the xSushi is worth
       int what = amount * totalSushi / totalShares;
+      require(what > 0, "Input amount is too small to leave SushiBar");
 
       require(tx.outputs[0].nftCommitment == bytes8(totalSushi - what) + bytes8(totalShares - amount), "SushiBar commitment does not match expected values after withdrawal");
       require(tx.outputs[1].tokenAmount == tx.inputs[1].tokenAmount - what, "Sushi output amount does not match expected amount after withdrawal");
