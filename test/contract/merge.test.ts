@@ -1,6 +1,6 @@
 import { PrivKeyConnector } from "@bch-wc2/privkey-connector";
 import { MockNetworkProvider, randomUtxo, Utxo } from "cashscript";
-import { SushiBar } from "../../src";
+import { MaxSushiBarShares, SushiBar, xSushiScale } from "../../src";
 import { aliceAddress, MockWallet } from "../shared";
 
 describe("Merge tests", () => {
@@ -11,7 +11,7 @@ describe("Merge tests", () => {
 
     const wallet = await MockWallet(provider);
 
-        const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed, networkProvider: provider });
+    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed, networkProvider: provider });
 
     const sushiBar = await SushiBar.deploy({
       wallet, provider, connector
@@ -41,7 +41,7 @@ describe("Merge tests", () => {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(1n);
-      expect(totalShares).toBe(1n);
+      expect(totalShares).toBe(1n * xSushiScale);
     }
 
     // Merge Sushi
@@ -58,7 +58,7 @@ describe("Merge tests", () => {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(101n);
-      expect(totalShares).toBe(1n);
+      expect(totalShares).toBe(1n * xSushiScale);
     }
   });
 
@@ -69,7 +69,7 @@ describe("Merge tests", () => {
 
     const wallet = await MockWallet(provider);
 
-        const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed, networkProvider: provider });
+    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed, networkProvider: provider });
 
     const sushiBar = await SushiBar.deploy({
       wallet, provider, connector
@@ -78,7 +78,7 @@ describe("Merge tests", () => {
     expect((await sushiBar.xSushiContract.getUtxos()).at(-1)).toMatchObject({
       token: {
         category: sushiBar.xSushiCategory,
-        amount: 99999999999n,
+        amount: MaxSushiBarShares - 1n * xSushiScale,
       }
     });
 
@@ -99,7 +99,7 @@ describe("Merge tests", () => {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(1n);
-      expect(totalShares).toBe(1n);
+      expect(totalShares).toBe(1n * xSushiScale);
     }
 
     // Merge Sushi
@@ -116,7 +116,7 @@ describe("Merge tests", () => {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(1n);
-      expect(totalShares).toBe(101n);
+      expect(totalShares).toBe(1n * xSushiScale + 100n);
     }
   });
 
@@ -127,7 +127,7 @@ describe("Merge tests", () => {
 
     const wallet = await MockWallet(provider);
 
-        const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed, networkProvider: provider });
+    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed, networkProvider: provider });
 
     const sushiBar = await SushiBar.deploy({
       wallet, provider, connector
@@ -157,7 +157,7 @@ describe("Merge tests", () => {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(1n);
-      expect(totalShares).toBe(1n);
+      expect(totalShares).toBe(1n * xSushiScale);
     }
 
     // Merge Sushi
@@ -174,7 +174,7 @@ describe("Merge tests", () => {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(101n);
-      expect(totalShares).toBe(1n);
+      expect(totalShares).toBe(1n * xSushiScale);
     }
   });
 
@@ -194,7 +194,7 @@ describe("Merge tests", () => {
     expect((await sushiBar.xSushiContract.getUtxos()).at(-1)).toMatchObject({
       token: {
         category: sushiBar.xSushiCategory,
-        amount: 99999999999n,
+        amount: MaxSushiBarShares - 1n * xSushiScale,
       }
     });
 
@@ -215,7 +215,7 @@ describe("Merge tests", () => {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(1n);
-      expect(totalShares).toBe(1n);
+      expect(totalShares).toBe(1n * xSushiScale);
     }
 
     // Merge Sushi
@@ -232,8 +232,7 @@ describe("Merge tests", () => {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(1n);
-      expect(totalShares).toBe(101n);
+      expect(totalShares).toBe(1n * xSushiScale + 100n);
     }
   });
-
 });

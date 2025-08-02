@@ -1,8 +1,8 @@
 import { IConnector } from "@bch-wc2/interfaces";
 import { NetworkProvider, placeholderP2PKHUnlocker, TransactionBuilder, Utxo } from "cashscript";
 import { BaseWallet, binToHex, TokenSendRequest } from "mainnet-js";
-import { getContracts, padVmNumber, toCashScriptUtxo, vmToBigInt } from "../../utils.js";
 import { Signer } from "../../Signer.js";
+import { getContracts, padVmNumber, toCashScriptUtxo, vmToBigInt } from "../../utils.js";
 import { MaxSushiBarShares } from "../const.js";
 
 export const incentivizeOrMerge = async ({

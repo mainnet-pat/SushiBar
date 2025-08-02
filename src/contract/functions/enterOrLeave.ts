@@ -1,9 +1,9 @@
 import { IConnector } from "@bch-wc2/interfaces";
 import { NetworkProvider, placeholderP2PKHUnlocker, TransactionBuilder } from "cashscript";
 import { BaseWallet, binToHex, TokenSendRequest } from "mainnet-js";
-import { getContracts, padVmNumber, toCashScriptUtxo, vmToBigInt } from "../../utils.js";
 import { Signer } from "../../Signer.js";
-import { MaxSushiBarShares } from "../const.js";
+import { getContracts, padVmNumber, toCashScriptUtxo, vmToBigInt } from "../../utils.js";
+import { MaxSushiBarShares, xSushiScale } from "../const.js";
 
 export const enter = async ({
   amountSushi,
@@ -103,10 +103,10 @@ export const enterOrLeave = async ({
     inputTokenCategory = sushiCategory;
     outputTokenCategory = xSushiCategory;
 
-    what = totalShares > 0n ? amount * totalShares / totalSushi : amount;
+    what = amount * totalShares / totalSushi;
 
-    if (totalShares <= 1) {
-      what = amount; // if this is the first deposit, we just release the same amount of xSushi as Sushi
+    if (totalShares <= 1n * xSushiScale) {
+      what = xSushiScale * amount; // if this is the first deposit, we just release the same amount of xSushi as Sushi
     }
 
     const newTotalSushi = totalSushi + amount;
@@ -116,12 +116,11 @@ export const enterOrLeave = async ({
       ...padVmNumber(newTotalSushi, 8),
       ...padVmNumber(newTotalShares, 8),
     ]));
-    console.log(newCommitment);
   } else {
     inputTokenCategory = xSushiCategory;
     outputTokenCategory = sushiCategory;
 
-    what = amount * totalSushi / totalShares;
+    what = xSushiScale * amount * totalSushi / totalShares / xSushiScale;
 
     const newTotalSushi = totalSushi - what;
     const newTotalShares = totalShares - amount;
@@ -235,7 +234,6 @@ export const enterOrLeave = async ({
     const change = builder.inputs.reduce((sum, input) => sum + input.satoshis, 0n) -
       builder.outputs.reduce((sum, output) => sum + (output.amount ?? 0n), 0n);
     console.debug(`Transaction size: ${txSize} bytes, change: ${change} satoshis, fee/byte ${Number(change) / txSize}`);
-    console.log(builder.build())
   }
 
   await signer.cashscriptSend(builder, {

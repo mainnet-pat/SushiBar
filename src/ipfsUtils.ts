@@ -1,8 +1,8 @@
 // @ts-ignore
 import Hash from 'ipfs-only-hash';
-import { BaseWallet, BCMR, hexToBin, OpReturnData, Registry, SendRequestType, sha256, TokenGenesisRequest, TokenSendRequest, utf8ToBin } from 'mainnet-js';
-import { Signer } from './Signer';
-import { consolidateUtxos } from './utils';
+import { BCMR, hexToBin, OpReturnData, Registry, SendRequestType, sha256, TokenGenesisRequest, TokenSendRequest, utf8ToBin } from 'mainnet-js';
+import { Signer } from './Signer.js';
+import { consolidateUtxos } from './utils.js';
 
 export const getIPFSCid = async (content: Uint8Array): Promise<string> => {
   return await Hash.of(content);

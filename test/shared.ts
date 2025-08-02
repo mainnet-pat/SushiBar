@@ -59,4 +59,17 @@ export const MockWalletMethods = (wallet: BaseWallet, provider: NetworkProvider)
     const txid = await provider.sendRawTransaction(binToHex(transaction));
     return txid;
   };
+
+  wallet.provider.sendRawTransaction = async (txHex: string, awaitPropagation: boolean = true): Promise<string> => {
+    const txid = await provider.sendRawTransaction(txHex);
+    return txid;
+  };
+
+  wallet.provider.getBlockHeight = async () => {
+    return provider.getBlockHeight();
+  };
+
+  wallet.provider.getRelayFee = async () => {
+    return 0.0001;
+  }
 }

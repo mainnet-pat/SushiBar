@@ -1,6 +1,6 @@
 import { PrivKeyConnector } from "@bch-wc2/privkey-connector";
 import { MockNetworkProvider, randomUtxo } from "cashscript";
-import { SushiBar } from "../../src";
+import { SushiBar, xSushiScale } from "../../src";
 import { aliceAddress, MockWallet } from "../shared";
 
 describe("Enter tests", () => {
@@ -24,11 +24,11 @@ describe("Enter tests", () => {
       amountSushi: amountToEnter,
     });
 
-    expect(result).toBe(100n);
+    expect(result).toBe(100n * xSushiScale);
 
     const { totalSushi, totalShares } = await sushiBar.getState();
 
-    expect(totalSushi).toBe(101n);
-    expect(totalShares).toBe(101n);
+    expect(totalSushi).toBe(amountToEnter + 1n);
+    expect(totalShares).toBe(101n * xSushiScale);
   });
 });

@@ -4,9 +4,10 @@ import { BaseWallet, binToHex, hexToBin, Registry, TokenSendRequest } from "main
 import SushiArtifact from "../../../artifacts/Sushi.artifact.js";
 import SushiBarArtifact from "../../../artifacts/SushiBar.artifact.js";
 import xSushiArtifact from "../../../artifacts/xSushi.artifact.js";
-import { getTokenGenesisUtxo, padVmNumber } from "../../utils.js";
+import { tokenGenesisWithBcmrPinToIpfs } from "../../ipfsUtils.js";
 import { Signer } from "../../Signer.js";
-import { MaxSushiBarShares } from "../const.js";
+import { getTokenGenesisUtxo, padVmNumber } from "../../utils.js";
+import { MaxSushiBarShares, xSushiScale } from "../const.js";
 
 export const deploy = async ({
   sushiCategory,
@@ -40,22 +41,16 @@ export const deploy = async ({
 
       sushiCategory = response.tokenIds![0]!;
     } else {
-      try {
-        const { tokenGenesisWithBcmrPinToIpfs } = await import("../../ipfsUtils.js");
+      const response = await tokenGenesisWithBcmrPinToIpfs({
+        signer,
+        genesisRequest: {
+          amount: MaxSushiBarShares,
+        },
+        bcmr: bcmrs.sushiBcmr,
+        userPrompt: "Sign to create Sushi token",
+      });
 
-        const response = await tokenGenesisWithBcmrPinToIpfs({
-          signer,
-          genesisRequest: {
-            amount: MaxSushiBarShares,
-          },
-          bcmr: bcmrs.sushiBcmr,
-          userPrompt: "Sign to create Sushi token",
-        });
-
-        sushiCategory = response.tokenIds![0]!;
-      } catch (error: any) {
-        throw new Error("Token genesis utils are not available: " + error.message);
-      }
+      sushiCategory = response.tokenIds![0]!;
     }
   } else {
     // check if signer has the sushi token
@@ -79,22 +74,16 @@ export const deploy = async ({
 
       xSushiCategory = response.tokenIds![0]!;
     } else {
-      try {
-        const { tokenGenesisWithBcmrPinToIpfs } = await import("../../ipfsUtils.js");
+      const response = await tokenGenesisWithBcmrPinToIpfs({
+        signer,
+        genesisRequest: {
+          amount: MaxSushiBarShares - 1n,
+        },
+        bcmr: bcmrs.xSushiBcmr,
+        userPrompt: "Sign to create xSushi token",
+      });
 
-        const response = await tokenGenesisWithBcmrPinToIpfs({
-          signer,
-          genesisRequest: {
-            amount: MaxSushiBarShares - 1n,
-          },
-          bcmr: bcmrs.xSushiBcmr,
-          userPrompt: "Sign to create xSushi token",
-        });
-
-        xSushiCategory = response.tokenIds![0]!;
-      } catch (error: any) {
-        throw new Error("Token genesis utils are not available: " + error.message);
-      }
+      xSushiCategory = response.tokenIds![0]!;
     }
   }
 
@@ -104,10 +93,11 @@ export const deploy = async ({
       const genesisUtxo = await getTokenGenesisUtxo({ signer });
       const response = await signer.tokenGenesis({
         capability: "mutable",
+        // here we initialize the initial scale factor
         commitment: binToHex(Uint8Array.from([
-          ...padVmNumber(BigInt(1), 8),
-          ...padVmNumber(BigInt(1), 8),
-        ]))
+          ...padVmNumber(1n, 8),
+          ...padVmNumber(1n * xSushiScale, 8),
+        ])),
       }, [], {
         ensureUtxos: [genesisUtxo],
         queryBalance: false,
@@ -116,27 +106,21 @@ export const deploy = async ({
 
       sushiBarCategory = response.tokenIds![0]!;
     } else {
-      try {
-        const { tokenGenesisWithBcmrPinToIpfs } = await import("../../ipfsUtils.js");
+      const response = await tokenGenesisWithBcmrPinToIpfs({
+        signer,
+        genesisRequest: {
+          capability: "mutable",
+          // here we initialize the initial scale factor
+          commitment: binToHex(Uint8Array.from([
+            ...padVmNumber(1n, 8),
+            ...padVmNumber(1n * xSushiScale, 8),
+          ])),
+        },
+        bcmr: bcmrs.sushiBarBcmr,
+        userPrompt: "Sign to create SushiBar token",
+      });
 
-
-        const response = await tokenGenesisWithBcmrPinToIpfs({
-          signer,
-          genesisRequest: {
-            capability: "mutable",
-            commitment: binToHex(Uint8Array.from([
-              ...padVmNumber(BigInt(1), 8),
-              ...padVmNumber(BigInt(1), 8),
-            ]))
-          },
-          bcmr: bcmrs.sushiBarBcmr,
-          userPrompt: "Sign to create SushiBar token",
-        });
-
-        sushiBarCategory = response.tokenIds![0]!;
-      } catch (error: any) {
-        throw new Error("Token genesis utils are not available: " + error.message);
-      }
+      sushiBarCategory = response.tokenIds![0]!;
     }
   }
 
@@ -157,8 +141,9 @@ export const deploy = async ({
   await signer.send(new TokenSendRequest({
     cashaddr: xSushiContract.address,
     tokenId: xSushiCategory,
-    amount: MaxSushiBarShares - 1n,
+    amount: MaxSushiBarShares - 1n * xSushiScale,
   }), {
+    checkTokenQuantities: false, // implicitly burn the rest xSushi
     userPrompt: "Sign to deploy xSushi contract",
   });
 
@@ -167,10 +152,11 @@ export const deploy = async ({
     cashaddr: sushiBarContract.address,
     tokenId: sushiBarCategory,
     capability: "mutable",
+    // here we initialize the initial scale factor
     commitment: binToHex(Uint8Array.from([
-      ...padVmNumber(BigInt(1), 8),
-      ...padVmNumber(BigInt(1), 8),
-    ]))
+      ...padVmNumber(1n, 8),
+      ...padVmNumber(1n * xSushiScale, 8),
+    ])),
   }), {
     userPrompt: "Sign to deploy SushiBar contract",
   });

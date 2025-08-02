@@ -1,6 +1,6 @@
 import { PrivKeyConnector } from "@bch-wc2/privkey-connector";
 import { MockNetworkProvider, randomToken, randomUtxo } from "cashscript";
-import { SushiBar } from "../src";
+import { SushiBar, xSushiScale } from "../src";
 import { aliceAddress, alicePriv, bobAddress, bobPriv, charlieAddress, charliePriv, daveAddress, davePriv, MockWallet } from "./shared";
 
 let provider: MockNetworkProvider;
@@ -53,20 +53,21 @@ describe("SushiBar", function () {
       amountSushi: 200n, // Alice only has 100 SUSHI
     })).rejects.toThrow("Not enough Sushi available to enter");
 
+    const amount = 100n;
     const result = await sushiBar.enter({
       wallet: await MockWallet(provider, alicePriv),
-      amountSushi: 100n,
+      amountSushi: amount,
     });
 
-    expect(result).toBe(100n);
+    expect(result).toBe(amount * xSushiScale);
 
     const { totalSushi, totalShares } = await sushiBar.getState();
-    expect(totalSushi).toBe(101n);
-    expect(totalShares).toBe(101n);
+    expect(totalSushi).toBe(amount + 1n);
+    expect(totalShares).toBe(result + 1n * xSushiScale);
 
     const aliceWallet = await MockWallet(provider, alicePriv);
     expect(await aliceWallet.getTokenBalance(sushiBar.sushiCategory)).toBe(0n);
-    expect(await aliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(100n);
+    expect(await aliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(result);
   });
 
   it("should not allow withraw more than what you have", async function () {
@@ -77,7 +78,7 @@ describe("SushiBar", function () {
 
     await expect(sushiBar.leave({
       wallet: await MockWallet(provider, alicePriv),
-      amountXSushi: 200n,
+      amountXSushi: 200n * xSushiScale,
     })).rejects.toThrow("Not enough xSushi available in SushiBar to leave");
   });
 
@@ -96,13 +97,13 @@ describe("SushiBar", function () {
       amountSushi: 10n,
     });
 
-    expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(20n);
-    expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(10n);
+    expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(20n * xSushiScale);
+    expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(10n * xSushiScale);
 
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(31n);
-      expect(totalShares).toBe(31n);
+      expect(totalShares).toBe(31n * xSushiScale);
     }
 
     // SushiBar get 20 more SUSHIs from an external source.
@@ -114,7 +115,7 @@ describe("SushiBar", function () {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(51n);
-      expect(totalShares).toBe(31n);
+      expect(totalShares).toBe(31n * xSushiScale);
     }
 
     // Alice deposits 10 more SUSHIs. She should receive 10*31/51 = 6 shares.
@@ -126,25 +127,26 @@ describe("SushiBar", function () {
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
       expect(totalSushi).toBe(61n);
-      expect(totalShares).toBe(37n);
+      // 37078n instead of 37n for scale factor 1000
+      expect(totalShares).toBe(31n * xSushiScale + (10n * xSushiScale * 31n / 51n));
     }
 
-    expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(26n);
-    expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(10n);
+    expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(20n * xSushiScale + (10n * xSushiScale * 31n / 51n));
+    expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(10n * xSushiScale);
 
     // Bob withdraws 5 shares. He should receive 5*60/36 = 8 shares
     await sushiBar.leave({
       wallet: bobWallet,
-      amountXSushi: 5n,
+      amountXSushi: 5n * xSushiScale,
     });
-    expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(26n);
-    expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(5n);
+    expect(await alliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(20n * xSushiScale + (10n * xSushiScale * 31n / 51n));
+    expect(await bobWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(5n * xSushiScale);
 
     {
       const { totalSushi, totalShares } = await sushiBar.getState();
 
       expect(totalSushi).toBe(53n);
-      expect(totalShares).toBe(32n);
+      expect(totalShares).toBe(31n * xSushiScale + (10n * xSushiScale * 31n / 51n) - 5n * xSushiScale);
     }
 
     expect(await alliceWallet.getTokenBalance(sushiBar.sushiCategory)).toBe(70n);

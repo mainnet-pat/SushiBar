@@ -1,6 +1,6 @@
 import { PrivKeyConnector } from "@bch-wc2/privkey-connector";
 import { MockNetworkProvider, randomUtxo } from "cashscript";
-import { MaxSushiBarShares } from "../../src/contract/const.js";
+import { MaxSushiBarShares, xSushiScale } from "../../src/contract/const.js";
 import { getFtRegistry, getTokenGenesisUtxo, SushiBar } from "../../src/index.js";
 import { Signer } from "../../src/Signer.js";
 import { aliceAddress, MockWallet } from "../shared";
@@ -26,6 +26,12 @@ describe("Deployment tests", () => {
     expect(await sushiBar.sushiContract.getUtxos()).toHaveLength(1);
     expect(await sushiBar.xSushiContract.getUtxos()).toHaveLength(1);
     expect(await sushiBar.sushiBarContract.getUtxos()).toHaveLength(1);
+
+    expect(await wallet.getTokenBalance(sushiBar.xSushiCategory)).toBe(0n); // signer should not have any xSushi after deployment
+
+    const { totalSushi, totalShares } = await sushiBar.getState();
+    expect(totalSushi).toBe(1n);
+    expect(totalShares).toBe(1n * xSushiScale);
   });
 
   test("Given sushi token is already created, deploy all contracts", async () => {
