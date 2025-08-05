@@ -1,6 +1,6 @@
 {
   "name": "sushibar.cash",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "SushiBar on Bitcoin Cash",
   "main": "dist/src/index.js",
   "type": "module",
