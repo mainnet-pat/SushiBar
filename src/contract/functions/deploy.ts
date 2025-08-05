@@ -15,6 +15,11 @@ export const deploy = async ({
   provider,
   connector,
   bcmrs,
+  tokenNames = {
+    sushiName: "Sushi",
+    xSushiName: "xSushi",
+    sushiBarName: "SushiBar",
+  },
 } : {
   sushiCategory?: string,
   wallet: BaseWallet,
@@ -25,6 +30,11 @@ export const deploy = async ({
     xSushiBcmr?: Registry,
     sushiBarBcmr?: Registry,
   },
+  tokenNames?: {
+    sushiName?: string,
+    xSushiName?: string,
+    sushiBarName?: string,
+  };
 }) => {
   const signer = new Signer(wallet, connector);
 
@@ -36,7 +46,7 @@ export const deploy = async ({
       }, [], {
         ensureUtxos: [genesisUtxo],
         queryBalance: false,
-        userPrompt: "Sign to create Sushi token",
+        userPrompt: `Sign to create ${tokenNames.sushiName ?? 'Sushi'} token`,
       });
 
       sushiCategory = response.tokenIds![0]!;
@@ -47,7 +57,7 @@ export const deploy = async ({
           amount: MaxSushiBarShares,
         },
         bcmr: bcmrs.sushiBcmr,
-        userPrompt: "Sign to create Sushi token",
+        userPrompt: `Sign to create ${tokenNames.sushiBarName ?? 'Sushi'} token`,
       });
 
       sushiCategory = response.tokenIds![0]!;
@@ -56,7 +66,7 @@ export const deploy = async ({
     // check if signer has the sushi token
     const sushiAmount = await signer.wallet.getTokenBalance(sushiCategory);
     if (!sushiAmount) {
-      throw new Error(`No sushi tokens found in signer's wallet for category: ${sushiCategory}`);
+      throw new Error(`No ${tokenNames.sushiName ?? 'Sushi'} tokens found in signer's wallet for category: ${sushiCategory}`);
     }
   }
 
@@ -69,7 +79,7 @@ export const deploy = async ({
       }, [], {
         ensureUtxos: [genesisUtxo],
         queryBalance: false,
-        userPrompt: "Sign to create xSushi token",
+        userPrompt: `Sign to create ${tokenNames.xSushiName ?? 'xSushi'} token`,
       });
 
       xSushiCategory = response.tokenIds![0]!;
@@ -80,7 +90,7 @@ export const deploy = async ({
           amount: MaxSushiBarShares - 1n,
         },
         bcmr: bcmrs.xSushiBcmr,
-        userPrompt: "Sign to create xSushi token",
+        userPrompt: `Sign to create ${tokenNames.xSushiName ?? 'xSushi'} token`,
       });
 
       xSushiCategory = response.tokenIds![0]!;
@@ -101,7 +111,7 @@ export const deploy = async ({
       }, [], {
         ensureUtxos: [genesisUtxo],
         queryBalance: false,
-        userPrompt: "Sign to create SushiBar token",
+        userPrompt: `Sign to create ${tokenNames.sushiBarName ?? 'SushiBar'} token`,
       });
 
       sushiBarCategory = response.tokenIds![0]!;
@@ -117,7 +127,7 @@ export const deploy = async ({
           ])),
         },
         bcmr: bcmrs.sushiBarBcmr,
-        userPrompt: "Sign to create SushiBar token",
+        userPrompt: `Sign to create ${tokenNames.sushiBarName ?? 'SushiBar'} token`,
       });
 
       sushiBarCategory = response.tokenIds![0]!;
@@ -134,7 +144,7 @@ export const deploy = async ({
     tokenId: sushiCategory,
     amount: 1n,
   }), {
-    userPrompt: "Sign to deploy Sushi contract",
+    userPrompt: `Sign to deploy ${tokenNames.sushiName ?? 'Sushi'} contract`,
   });
 
   // "deploy" xSushi contract, send entire supply minus 1 atomic unit
@@ -144,7 +154,7 @@ export const deploy = async ({
     amount: MaxSushiBarShares - 1n * xSushiScale,
   }), {
     checkTokenQuantities: false, // implicitly burn the rest xSushi
-    userPrompt: "Sign to deploy xSushi contract",
+    userPrompt: `Sign to deploy ${tokenNames.xSushiName ?? 'xSushi'} contract`,
   });
 
   // "deploy" SushiBar contract, send NFT
@@ -158,7 +168,7 @@ export const deploy = async ({
       ...padVmNumber(1n * xSushiScale, 8),
     ])),
   }), {
-    userPrompt: "Sign to deploy SushiBar contract",
+    userPrompt: `Sign to deploy ${tokenNames.sushiBarName ?? 'SushiBar'} contract`,
   });
 
   return {

@@ -15,6 +15,11 @@ export const incentivizeOrMerge = async ({
   sushiCategory,
   xSushiCategory,
   sushiBarCategory,
+  tokenNames = {
+    sushiName: "Sushi",
+    xSushiName: "xSushi",
+    sushiBarName: "SushiBar",
+  },
 } : {
   amount: bigint,
   inputTokenCategory: string,
@@ -25,6 +30,11 @@ export const incentivizeOrMerge = async ({
   sushiCategory: string,
   xSushiCategory: string,
   sushiBarCategory: string,
+  tokenNames?: {
+    sushiName?: string,
+    xSushiName?: string,
+    sushiBarName?: string,
+  };
 }) => {
   if (amount <= 0n) {
     throw new Error("Amount must be greater than 0");
@@ -33,14 +43,14 @@ export const incentivizeOrMerge = async ({
   const signer = new Signer(wallet, connector);
 
   if (inputTokenCategory !== sushiCategory && inputTokenCategory !== xSushiCategory) {
-    throw new Error(`Invalid input token category: ${inputTokenCategory}. Must be either Sushi or xSushi.`);
+    throw new Error(`Invalid input token category: ${inputTokenCategory}. Must be either ${tokenNames.sushiName ?? 'Sushi'} or ${tokenNames.xSushiName ?? 'xSushi'}.`);
   }
 
   const contracts = getContracts(sushiCategory, xSushiCategory, sushiBarCategory, provider);
 
   const sushiBarContractUtxo = (await contracts.sushiBar.getUtxos())[0];
   if (!sushiBarContractUtxo || !sushiBarContractUtxo.token?.nft?.commitment) {
-    throw new Error("No suitable UTXO found for SushiBar contract");
+    throw new Error(`No suitable UTXO found for ${tokenNames.sushiBarName ?? 'SushiBar'} contract`);
   }
 
   const totalSushi = vmToBigInt(sushiBarContractUtxo.token.nft.commitment.slice(0, 16));
@@ -63,14 +73,14 @@ export const incentivizeOrMerge = async ({
   if (inputTokenCategory === sushiCategory) {
     const sushiContractUtxo = (await contracts.sushi.getUtxos()).find(utxo => utxo.token!.amount === totalSushi);
     if (!sushiContractUtxo || !sushiContractUtxo.token?.amount) {
-      throw new Error("No suitable UTXO found for Sushi contract");
+      throw new Error(`No suitable UTXO found for ${tokenNames.sushiName ?? 'Sushi'} contract`);
     }
 
     inputContractUtxo = sushiContractUtxo;
   } else {
     const xSushiContractUtxo = (await contracts.xSushi.getUtxos()).find(utxo => utxo.token!.amount === MaxSushiBarShares - totalShares);
     if (!xSushiContractUtxo || !xSushiContractUtxo.token?.amount) {
-      throw new Error("No suitable UTXO found for xSushi contract");
+      throw new Error(`No suitable UTXO found for ${tokenNames.xSushiName ?? 'xSushi'} contract`);
     }
 
     inputContractUtxo = xSushiContractUtxo;
@@ -88,7 +98,7 @@ export const incentivizeOrMerge = async ({
       .reduce((sum, utxo) => sum + utxo.token!.amount, 0n);
 
     if (sushiAvailable < amount) {
-      throw new Error(`Not enough Sushi available to enter: ${amount} required, ${sushiAvailable} available`);
+      throw new Error(`Not enough ${tokenNames.sushiName ?? 'Sushi'} available to enter: ${amount} required, ${sushiAvailable} available`);
     }
 
     let sushiDepositUtxo = sushiDepositUtxos.find(utxo => utxo.token!.amount === amount);
@@ -99,13 +109,13 @@ export const incentivizeOrMerge = async ({
         tokenId: sushiCategory,
         amount: amount,
       }), {
-        userPrompt: "Sign the transaction to consolidate Sushi UTXOs",
+        userPrompt: `Sign the transaction to consolidate ${tokenNames.sushiName ?? 'Sushi'} UTXOs`,
       });
 
       sushiDepositUtxo = (await signer.wallet.getUtxos()).find(utxo => utxo.token?.tokenId === sushiCategory && utxo.token.amount === amount);
 
       if (!sushiDepositUtxo) {
-        throw new Error(`Failed to find a suitable Sushi UTXO after consolidation`);
+        throw new Error(`Failed to find a suitable ${tokenNames.sushiName ?? 'Sushi'} UTXO after consolidation`);
       }
     }
 
@@ -155,7 +165,7 @@ export const incentivizeOrMerge = async ({
   }
 
   await signer.cashscriptSend(builder, {
-    userPrompt: `Sign the transaction to ${mergeUtxo ? "merge" : "incentivize"} SushiBar`,
+    userPrompt: `Sign the transaction to ${mergeUtxo ? "merge" : "incentivize"} ${tokenNames.sushiBarName ?? 'SushiBar'}`,
   });
 
   return amount;

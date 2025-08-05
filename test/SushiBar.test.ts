@@ -153,3 +153,86 @@ describe("SushiBar", function () {
     expect(await bobWallet.getTokenBalance(sushiBar.sushiCategory)).toBe(98n);
   });
 });
+
+describe("Custom token names", () => {
+  beforeEach(async function () {
+    provider = new MockNetworkProvider();
+    provider.reset();
+    provider.addUtxo(daveAddress, randomUtxo({}));
+
+    const wallet = await MockWallet(provider, davePriv);
+
+    const connector = new PrivKeyConnector({ privateKey: wallet.privateKey, pubkeyCompressed: wallet.publicKeyCompressed, networkProvider: provider });
+
+    sushiBar = await SushiBar.deploy({
+      wallet,
+      provider,
+      connector,
+      tokenNames: {
+        sushiName: "CustomSushi",
+        xSushiName: "CustomxSushi",
+        sushiBarName: "CustomSushiBar",
+      },
+    });
+
+    provider.addUtxo(aliceAddress, randomUtxo());
+    provider.addUtxo(aliceAddress, randomUtxo({
+      token: randomToken({
+        amount: 100n,
+        category: sushiBar.sushiCategory,
+      }),
+    }));
+
+    provider.addUtxo(bobAddress, randomUtxo());
+    provider.addUtxo(bobAddress, randomUtxo({
+      token: randomToken({
+        amount: 100n,
+        category: sushiBar.sushiCategory,
+      }),
+    }));
+
+    provider.addUtxo(charlieAddress, randomUtxo());
+    provider.addUtxo(charlieAddress, randomUtxo({
+      token: randomToken({
+        amount: 100n,
+        category: sushiBar.sushiCategory,
+      }),
+    }));
+  });
+
+  it("should not allow enter if not enough tokens", async function () {
+    await expect(sushiBar.enter({
+      wallet: await MockWallet(provider, alicePriv),
+      amountSushi: 200n, // Alice only has 100 SUSHI
+
+    })).rejects.toThrow("Not enough CustomSushi available to enter");
+
+    const amount = 100n;
+    const result = await sushiBar.enter({
+      wallet: await MockWallet(provider, alicePriv),
+      amountSushi: amount,
+    });
+
+    expect(result).toBe(amount * xSushiScale);
+
+    const { totalSushi, totalShares } = await sushiBar.getState();
+    expect(totalSushi).toBe(amount + 1n);
+    expect(totalShares).toBe(result + 1n * xSushiScale);
+
+    const aliceWallet = await MockWallet(provider, alicePriv);
+    expect(await aliceWallet.getTokenBalance(sushiBar.sushiCategory)).toBe(0n);
+    expect(await aliceWallet.getTokenBalance(sushiBar.xSushiCategory,)).toBe(result);
+  });
+
+  it("should not allow withraw more than what you have", async function () {
+    await sushiBar.enter({
+      wallet: await MockWallet(provider, alicePriv),
+      amountSushi: 100n,
+    });
+
+    await expect(sushiBar.leave({
+      wallet: await MockWallet(provider, alicePriv),
+      amountXSushi: 200n * xSushiScale,
+    })).rejects.toThrow("Not enough CustomxSushi available in CustomSushiBar to leave");
+  });
+});

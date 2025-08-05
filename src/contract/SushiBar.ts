@@ -19,6 +19,11 @@ export class SushiBar {
   public sushiCategory: string;
   public xSushiCategory: string;
   public sushiBarCategory: string;
+  public tokenNames: {
+    sushiName?: string;
+    xSushiName?: string;
+    sushiBarName?: string;
+  };
 
   static async deploy({
     sushiCategory,
@@ -26,6 +31,11 @@ export class SushiBar {
     provider,
     connector,
     bcmrs,
+    tokenNames = {
+      sushiName: "Sushi",
+      xSushiName: "xSushi",
+      sushiBarName: "SushiBar",
+    },
   }: {
     sushiCategory?: string;
     wallet: BaseWallet;
@@ -36,6 +46,11 @@ export class SushiBar {
       xSushiBcmr?: Registry,
       sushiBarBcmr?: Registry,
     },
+    tokenNames?: {
+      sushiName?: string;
+      xSushiName?: string;
+      sushiBarName?: string;
+    };
   }) {
     const result = await deploy({
       provider: provider,
@@ -45,11 +60,41 @@ export class SushiBar {
       bcmrs: bcmrs,
     });
 
-    return new SushiBar(result.sushiCategory, result.xSushiCategory, result.sushiBarCategory, provider, connector);
+    return new SushiBar({
+      sushiCategory: result.sushiCategory,
+      xSushiCategory: result.xSushiCategory,
+      sushiBarCategory: result.sushiBarCategory,
+      provider,
+      connector,
+      tokenNames,
+    });
   }
 
-  constructor(sushiCategory: string, xSushiCategory: string, sushiBarCategory: string, provider: NetworkProvider, connector: IConnector) {
+  constructor({
+      sushiCategory,
+      xSushiCategory,
+      sushiBarCategory,
+      provider,
+      connector,
+      tokenNames = {
+        sushiName: "Sushi",
+        xSushiName: "xSushi",
+        sushiBarName: "SushiBar",
+      },
+    } : {
+      sushiCategory: string;
+      xSushiCategory: string;
+      sushiBarCategory: string;
+      provider: NetworkProvider;
+      connector: IConnector;
+      tokenNames?: {
+        sushiName?: string;
+        xSushiName?: string;
+        sushiBarName?: string;
+      };
+    }) {
     this.connector = connector;
+    this.tokenNames = tokenNames;
 
     const contracts = getContracts(sushiCategory, xSushiCategory, sushiBarCategory, provider);
 
@@ -77,6 +122,7 @@ export class SushiBar {
       sushiCategory: this.sushiCategory,
       xSushiCategory: this.xSushiCategory,
       sushiBarCategory: this.sushiBarCategory,
+      tokenNames: this.tokenNames,
     });
   }
 
@@ -95,6 +141,7 @@ export class SushiBar {
       sushiCategory: this.sushiCategory,
       xSushiCategory: this.xSushiCategory,
       sushiBarCategory: this.sushiBarCategory,
+      tokenNames: this.tokenNames,
     });
   }
 
@@ -115,6 +162,7 @@ export class SushiBar {
       sushiCategory: this.sushiCategory,
       xSushiCategory: this.xSushiCategory,
       sushiBarCategory: this.sushiBarCategory,
+      tokenNames: this.tokenNames,
     });
   }
 
@@ -135,6 +183,7 @@ export class SushiBar {
       sushiCategory: this.sushiCategory,
       xSushiCategory: this.xSushiCategory,
       sushiBarCategory: this.sushiBarCategory,
+      tokenNames: this.tokenNames,
     });
   }
 

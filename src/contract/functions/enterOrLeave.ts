@@ -13,6 +13,11 @@ export const enter = async ({
   sushiCategory,
   xSushiCategory,
   sushiBarCategory,
+  tokenNames = {
+    sushiName: "Sushi",
+    xSushiName: "xSushi",
+    sushiBarName: "SushiBar",
+  },
 } : {
   amountSushi: bigint,
   wallet: BaseWallet,
@@ -21,6 +26,11 @@ export const enter = async ({
   sushiCategory: string,
   xSushiCategory: string,
   sushiBarCategory: string,
+  tokenNames?: {
+    sushiName?: string,
+    xSushiName?: string,
+    sushiBarName?: string,
+  };
 }) => {
   return enterOrLeave({
     enter: true,
@@ -31,6 +41,7 @@ export const enter = async ({
     sushiCategory,
     xSushiCategory,
     sushiBarCategory,
+    tokenNames,
   });
 }
 
@@ -42,6 +53,11 @@ export const leave = async ({
   sushiCategory,
   xSushiCategory,
   sushiBarCategory,
+  tokenNames = {
+    sushiName: "Sushi",
+    xSushiName: "xSushi",
+    sushiBarName: "SushiBar",
+  },
 } : {
   amountXSushi: bigint,
   wallet: BaseWallet,
@@ -50,6 +66,11 @@ export const leave = async ({
   sushiCategory: string,
   xSushiCategory: string,
   sushiBarCategory: string,
+  tokenNames?: {
+    sushiName?: string,
+    xSushiName?: string,
+    sushiBarName?: string,
+  };
 }) => {
   return enterOrLeave({
     enter: false,
@@ -60,6 +81,7 @@ export const leave = async ({
     sushiCategory,
     xSushiCategory,
     sushiBarCategory,
+    tokenNames,
   });
 }
 
@@ -72,6 +94,11 @@ export const enterOrLeave = async ({
   sushiCategory,
   xSushiCategory,
   sushiBarCategory,
+  tokenNames = {
+    sushiName: "Sushi",
+    xSushiName: "xSushi",
+    sushiBarName: "SushiBar",
+  },
 } : {
   enter: boolean,
   amount: bigint,
@@ -81,6 +108,11 @@ export const enterOrLeave = async ({
   sushiCategory: string,
   xSushiCategory: string,
   sushiBarCategory: string,
+  tokenNames?: {
+    sushiName?: string,
+    xSushiName?: string,
+    sushiBarName?: string,
+  };
 }) => {
   if (amount <= 0n) {
     throw new Error("Amount must be greater than 0");
@@ -92,7 +124,7 @@ export const enterOrLeave = async ({
 
   const sushiBarContractUtxo = (await contracts.sushiBar.getUtxos())[0];
   if (!sushiBarContractUtxo || !sushiBarContractUtxo.token?.nft?.commitment) {
-    throw new Error("No suitable UTXO found for SushiBar contract");
+    throw new Error(`No suitable UTXO found for ${tokenNames.sushiBarName ?? 'SushiBar'} contract`);
   }
 
   const totalSushi = vmToBigInt(sushiBarContractUtxo.token.nft.commitment.slice(0, 16));
@@ -136,17 +168,17 @@ export const enterOrLeave = async ({
   }
 
   if (what === 0n) {
-    throw new Error(`Input amount is too small to ${enter ? `enter` : `leave`} SushiBar`);
+    throw new Error(`Input amount is too small to ${enter ? `enter` : `leave`} ${tokenNames.sushiBarName ?? 'SushiBar'}`);
   }
 
   const sushiContractUtxo = (await contracts.sushi.getUtxos()).find(utxo => utxo.token!.amount === totalSushi);
   if (!sushiContractUtxo || !sushiContractUtxo.token?.amount) {
-    throw new Error("No suitable UTXO found for Sushi contract");
+    throw new Error(`No suitable UTXO found for ${tokenNames.sushiName ?? 'Sushi'} contract`);
   }
 
   const xSushiContractUtxo = (await contracts.xSushi.getUtxos()).find(utxo => utxo.token!.amount === MaxSushiBarShares - totalShares);
   if (!xSushiContractUtxo || !xSushiContractUtxo.token?.amount) {
-    throw new Error("No suitable UTXO found for xSushi contract");
+    throw new Error(`No suitable UTXO found for ${tokenNames.xSushiName ?? 'xSushi'} contract`);
   }
 
   const inputTokenUtxoCandidates = await signer.wallet.getUtxos();
@@ -157,9 +189,9 @@ export const enterOrLeave = async ({
 
   if (tokenAvailable < amount) {
     if (enter) {
-      throw new Error(`Not enough Sushi available to enter: ${amount} required, ${tokenAvailable} available`);
+      throw new Error(`Not enough ${tokenNames.sushiName ?? 'Sushi'} available to enter: ${amount} required, ${tokenAvailable} available`);
     } else {
-      throw new Error(`Not enough xSushi available in SushiBar to leave: ${amount} required, ${tokenAvailable} available`); 
+      throw new Error(`Not enough ${tokenNames.xSushiName ?? 'xSushi'} available in ${tokenNames.sushiBarName ?? 'SushiBar'} to leave: ${amount} required, ${tokenAvailable} available`); 
     }
   }
 
@@ -171,13 +203,13 @@ export const enterOrLeave = async ({
       tokenId: inputTokenCategory,
       amount: amount,
     }), {
-      userPrompt: `Sign to consolidate ${enter ? `Sushi` : `xSushi`} UTXOs`,
+      userPrompt: `Sign to consolidate ${enter ? `${tokenNames.sushiName ?? 'Sushi'}` : `${tokenNames.xSushiName ?? 'xSushi'}`} UTXOs`,
     });
 
     inputTokenUtxo = (await signer.wallet.getUtxos()).find(utxo => utxo.token?.tokenId === inputTokenCategory && utxo.token.amount === amount);
 
     if (!inputTokenUtxo) {
-      throw new Error(`Failed to find a suitable ${enter ? `Sushi` : `xSushi`} UTXO after consolidation`);
+      throw new Error(`Failed to find a suitable ${enter ? `${tokenNames.sushiName ?? 'Sushi'}` : `${tokenNames.xSushiName ?? 'xSushi'}`} UTXO after consolidation`);
     }
   }
 
@@ -241,7 +273,7 @@ export const enterOrLeave = async ({
   }
 
   await signer.cashscriptSend(builder, {
-    userPrompt: `Sign to ${enter ? `enter` : `leave`} SushiBar`,
+    userPrompt: `Sign to ${enter ? `enter` : `leave`} ${tokenNames.sushiBarName ?? 'SushiBar'}`,
   });
 
   return what;
