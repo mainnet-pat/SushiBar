@@ -4,5 +4,8 @@
 
 ## Development and testing
 
-`npm i -g @team-griffin/install-self-peers`
-`install-self-peers`
+Building: `yarn build`
+
+Watch for changes: `yarn watch`
+
+Run tests: `yarn test`
