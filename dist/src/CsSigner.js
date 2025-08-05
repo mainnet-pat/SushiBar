@@ -1,0 +1,41 @@
+import { PrimitiveType } from "@cashscript/utils";
+import { isContractUnlocker, isPlaceholderUnlocker, SignatureTemplate } from "cashscript";
+export class CsSigner {
+    connector;
+    constructor(connector) {
+        if (!connector) {
+            throw new Error("Invalid wallet or connector");
+        }
+        this.connector = connector;
+    }
+    async cashscriptSend(builder, options) {
+        if ("privateKey" in this.connector) {
+            const signatureTemplate = new SignatureTemplate(this.connector.privateKey);
+            for (const input of builder.inputs) {
+                if (isContractUnlocker(input.unlocker)) {
+                    // replace signature function params
+                    for (const [index, inputParam] of input.unlocker.abiFunction.inputs.entries()) {
+                        if (inputParam.type === PrimitiveType.SIG) {
+                            input.unlocker.params[index] = signatureTemplate;
+                        }
+                    }
+                }
+                else if (isPlaceholderUnlocker(input.unlocker)) {
+                    // replace placeholder p2pkh signatures
+                    input.unlocker = signatureTemplate.unlockP2PKH();
+                }
+            }
+            builder.debug();
+        }
+        const signRequest = builder.generateWcTransactionObject(options);
+        const signResponse = await this.connector.signTransaction(signRequest);
+        if (!signResponse) {
+            throw new Error("Failed to sign cashscript transaction, user may have rejected the request");
+        }
+        if (options?.broadcast !== true) {
+            await builder.provider.sendRawTransaction(signResponse.signedTransaction);
+        }
+        return signResponse;
+    }
+}
+//# sourceMappingURL=CsSigner.js.map
