@@ -26,6 +26,10 @@ export const incentivizeOrMerge = async ({
   xSushiCategory: string,
   sushiBarCategory: string,
 }) => {
+  if (amount <= 0n) {
+    throw new Error("Amount must be greater than 0");
+  }
+
   const signer = new Signer(wallet, connector);
 
   if (inputTokenCategory !== sushiCategory && inputTokenCategory !== xSushiCategory) {

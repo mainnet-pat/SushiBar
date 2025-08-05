@@ -82,6 +82,10 @@ export const enterOrLeave = async ({
   xSushiCategory: string,
   sushiBarCategory: string,
 }) => {
+  if (amount <= 0n) {
+    throw new Error("Amount must be greater than 0");
+  }
+
   const signer = new Signer(wallet, connector);
 
   const contracts = getContracts(sushiCategory, xSushiCategory, sushiBarCategory, provider);
